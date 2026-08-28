@@ -1,0 +1,2 @@
+# Keep directory for Flyway. Schema lives in docs/sql (applied manually for B0).
+# First real migration should be V2__....sql

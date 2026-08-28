@@ -1,0 +1,21 @@
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/kchat_test}
+    username: ${DB_USER:admin}
+    password: ${DB_PASSWORD:123}
+
+logging:
+  level:
+    com.kchat: DEBUG
+
+kchat:
+  s3:
+    bucket: kchat-test
+    region: ap-southeast-1
+    access-key: test
+    secret-key: testtesttest
+    endpoint: http://127.0.0.1:1

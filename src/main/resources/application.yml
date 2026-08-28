@@ -1,0 +1,151 @@
+server:
+  port: ${SERVER_PORT:8864}
+  # Native Tomcat RemoteIpValve: honor X-Forwarded-* only from ALB/VPC peers.
+  # Default `a^` never matches (safe on published Docker ports). ECS sets TOMCAT_INTERNAL_PROXIES.
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      remote-ip-header: x-forwarded-for
+      protocol-header: x-forwarded-proto
+      internal-proxies: ${TOMCAT_INTERNAL_PROXIES:a^}
+
+spring:
+  application:
+    name: k-chat
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-unknown-properties: false
+
+  datasource:
+    # Override via env. Defaults match kpay-backend/.env.example local stack.
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/kchat}
+    username: ${DB_USER:admin}
+    password: ${DB_PASSWORD:123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: kchat-hikari
+      maximum-pool-size: 20
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  # Fresh DB: apply docs/sql/kchat-schema.sql then baseline V1. Later deltas = V2__.
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 1
+
+  # JWT auth only; avoid Redis repository scanning of JPA interfaces.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:redis123}
+
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 30MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+  health:
+    db:
+      enabled: true
+    redis:
+      enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    root: INFO
+    com.kchat: INFO
+
+kchat:
+  jwt:
+    access-secret: ${JWT_ACCESS_SECRET:dev-kchat-access-secret-change-me-32b!!}
+    access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:30}
+    refresh-ttl-days: ${JWT_REFRESH_TTL_DAYS:30}
+  bot:
+    ops-alerts-secret: ${KCHAT_OPS_ALERTS_WEBHOOK_SECRET:dev-ops-alerts-webhook-secret}
+  s3:
+    bucket: ${KCHAT_S3_BUCKET:}
+    region: ${KCHAT_S3_REGION:ap-southeast-1}
+    endpoint: ${KCHAT_S3_ENDPOINT:}
+    access-key: ${KCHAT_S3_ACCESS_KEY:}
+    secret-key: ${KCHAT_S3_SECRET_KEY:}
+  cleanup:
+    disappearing:
+      enabled: ${KCHAT_DISAPPEARING_CLEANUP_ENABLED:true}
+      cron: ${KCHAT_DISAPPEARING_CLEANUP_CRON:0 */5 * * * *}
+      batch-size: ${KCHAT_DISAPPEARING_CLEANUP_BATCH_SIZE:500} # capped at 1000 in service
+      lock-at-most-for: PT4M
+      lock-at-least-for: PT1M
+    # Interval for CallRingingTimeoutJob (ring timeout itself is 45s in CallServiceImpl).
+    call-ringing-interval-ms: ${KCHAT_CALL_RINGING_INTERVAL_MS:${KCHAT_CALL_RINGING_MS:15000}}
+  webrtc:
+    # STUN always on. TURN via env for production (see .env.example).
+    stun-urls: ${KCHAT_WEBRTC_STUN_URLS:stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302}
+    turn-urls: ${KCHAT_WEBRTC_TURN_URLS:}
+    turn-username: ${KCHAT_WEBRTC_TURN_USERNAME:}
+    turn-credential: ${KCHAT_WEBRTC_TURN_CREDENTIAL:}
+    # Coturn REST API shared secret → ephemeral creds (preferred over static).
+    turn-shared-secret: ${KCHAT_WEBRTC_TURN_SHARED_SECRET:}
+    turn-credential-ttl-seconds: ${KCHAT_WEBRTC_TURN_TTL_SECONDS:86400}
+    # NEVER true in production. Dev profile sets this in application-dev.yml.
+    allow-dev-openrelay: ${KCHAT_WEBRTC_ALLOW_DEV_OPENRELAY:false}
+    # Extra public TURN alongside coturn (staging emulator QA). Default false.
+    include-openrelay-fallback: ${KCHAT_WEBRTC_INCLUDE_OPENRELAY_FALLBACK:false}
+  password-reset:
+    ttl-minutes: ${KCHAT_PASSWORD_RESET_TTL_MINUTES:30}
+    otp-length: ${KCHAT_PASSWORD_RESET_OTP_LENGTH:6}
+    mail-enabled: ${KCHAT_PASSWORD_RESET_MAIL_ENABLED:false}
+  fcm:
+    enabled: ${KCHAT_FCM_ENABLED:false}
+    service-account-json: ${KCHAT_FCM_SERVICE_ACCOUNT_JSON:}
+  mail:
+    app-name: ${KCHAT_MAIL_APP_NAME:k-chat}
+    from-name: ${KCHAT_MAIL_FROM_NAME:k-chat}
+    company-name: ${KCHAT_MAIL_COMPANY_NAME:k-chat}
+    support-email: ${KCHAT_SUPPORT_EMAIL:}

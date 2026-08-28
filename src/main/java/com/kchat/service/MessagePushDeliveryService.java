@@ -1,0 +1,162 @@
+package com.kchat.service;
+
+import com.kchat.common.dto.chat.MessageDto;
+import com.kchat.common.enums.RoomType;
+import com.kchat.common.util.ChannelRules;
+import com.kchat.entity.ChatRoom;
+import com.kchat.entity.DirectRoomPair;
+import com.kchat.entity.RoomMember;
+import com.kchat.entity.UserDevice;
+import com.kchat.entity.UserSettings;
+import com.kchat.repository.ChatRoomRepository;
+import com.kchat.repository.DirectRoomPairRepository;
+import com.kchat.repository.RoomMemberRepository;
+import com.kchat.repository.UserDeviceRepository;
+import com.kchat.repository.UserSettingsRepository;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class MessagePushDeliveryService {
+
+    private static final Logger log = LoggerFactory.getLogger(MessagePushDeliveryService.class);
+
+    private final FcmPushService fcmPushService;
+    private final PushDeliveryPolicy pushDeliveryPolicy;
+    private final UserSettingsRepository userSettingsRepository;
+    private final RoomMemberRepository roomMemberRepository;
+    private final UserDeviceRepository userDeviceRepository;
+    private final ChatRoomRepository chatRoomRepository;
+    private final DirectRoomPairRepository directRoomPairRepository;
+
+    public MessagePushDeliveryService(
+            FcmPushService fcmPushService,
+            PushDeliveryPolicy pushDeliveryPolicy,
+            UserSettingsRepository userSettingsRepository,
+            RoomMemberRepository roomMemberRepository,
+            UserDeviceRepository userDeviceRepository,
+            ChatRoomRepository chatRoomRepository,
+            DirectRoomPairRepository directRoomPairRepository
+    ) {
+        this.fcmPushService = fcmPushService;
+        this.pushDeliveryPolicy = pushDeliveryPolicy;
+        this.userSettingsRepository = userSettingsRepository;
+        this.roomMemberRepository = roomMemberRepository;
+        this.userDeviceRepository = userDeviceRepository;
+        this.chatRoomRepository = chatRoomRepository;
+        this.directRoomPairRepository = directRoomPairRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public void deliver(UUID roomId, UUID senderId, List<UUID> memberIds, MessageDto message) {
+        if (!fcmPushService.isEnabled() || memberIds == null || memberIds.isEmpty()) {
+            return;
+        }
+        try {
+            Instant now = Instant.now();
+            ChatRoom room = chatRoomRepository.findById(roomId).orElse(null);
+            if (room == null) {
+                return;
+            }
+            DirectRoomPair pair = room.getType() == RoomType.direct
+                    ? directRoomPairRepository.findByRoomIdIn(List.of(roomId)).stream().findFirst().orElse(null)
+                    : null;
+            String body = formatBody(message);
+            String senderName = message.senderName() == null ? "" : message.senderName();
+
+            for (UUID memberId : memberIds) {
+                if (senderId != null && memberId.equals(senderId)) {
+                    continue;
+                }
+                // Per-device suppression is handled on Android (active room). Skip only when
+                // user is globally offline from push perspective is NOT used — deliver to all
+                // registered FCM tokens so multi-device works (phone background + tablet online).
+                RoomMember membership = roomMemberRepository.findActiveMembership(roomId, memberId).orElse(null);
+                if (membership == null) {
+                    continue;
+                }
+                UserSettings settings = userSettingsRepository.findById(memberId).orElse(null);
+                if (!pushDeliveryPolicy.shouldSendRoomMessagePush(settings, membership, now, memberId)) {
+                    continue;
+                }
+                String title = resolveTitle(room, pair, memberId);
+                List<UserDevice> devices = userDeviceRepository.findByUser_IdOrderByLastActiveAtDesc(memberId);
+                for (UserDevice device : devices) {
+                    String token = device.getFcmToken();
+                    if (token == null || token.isBlank() || token.startsWith("dev:")) {
+                        continue;
+                    }
+                    fcmPushService.sendRoomMessage(
+                            token,
+                            roomId.toString(),
+                            title,
+                            senderName,
+                            body
+                    );
+                }
+            }
+        } catch (Exception ex) {
+            log.error("FCM delivery failed for room {}", roomId, ex);
+        }
+    }
+
+    private static String formatBody(MessageDto message) {
+        if (message == null) {
+            return "Tin nhắn mới";
+        }
+        String type = message.type() == null ? "text" : message.type();
+        return switch (type) {
+            case "image" -> "[Ảnh]";
+            case "file" -> message.fileName() == null || message.fileName().isBlank()
+                    ? "[File]"
+                    : "[File] " + message.fileName();
+            case "call_event" -> "[Cuộc gọi]";
+            case "system" -> message.botTitle() == null || message.botTitle().isBlank()
+                    ? "[Bot]"
+                    : message.botTitle();
+            default -> {
+                String text = message.text();
+                if (text == null || text.isBlank()) {
+                    yield "Tin nhắn mới";
+                }
+                yield truncate(text, 120);
+            }
+        };
+    }
+
+    private static String resolveTitle(ChatRoom room, DirectRoomPair pair, UUID userId) {
+        if (room.getType() == RoomType.direct) {
+            if (pair == null) {
+                return "Direct";
+            }
+            try {
+                return pair.otherUser(userId).getDisplayName();
+            } catch (RuntimeException ex) {
+                return "Direct";
+            }
+        }
+        if (room.getType() == RoomType.channel) {
+            return ChannelRules.displayTitle(room.getName(), room.getSlug());
+        }
+        if (room.getName() != null && !room.getName().isBlank()) {
+            return room.getName();
+        }
+        if (room.getSlug() != null && !room.getSlug().isBlank()) {
+            return room.getSlug();
+        }
+        return "Chat";
+    }
+
+    private static String truncate(String value, int max) {
+        String trimmed = value.trim();
+        if (trimmed.length() <= max) {
+            return trimmed;
+        }
+        return trimmed.substring(0, max - 1) + "…";
+    }
+}
