@@ -3,7 +3,6 @@ package com.kchat.repository;
 import com.kchat.entity.PinnedMessage;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -21,14 +20,9 @@ public interface PinnedMessageRepository extends JpaRepository<PinnedMessage, Pi
             """)
     List<PinnedMessage> findByRoomIdOrderByPinnedAtDesc(@Param("roomId") UUID roomId);
 
-    default Optional<PinnedMessage> findLatestByRoomId(UUID roomId) {
-        List<PinnedMessage> list = findByRoomIdOrderByPinnedAtDesc(roomId);
-        return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
-    }
+    long countByRoomId(UUID roomId);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("DELETE FROM PinnedMessage p WHERE p.roomId = :roomId")
-    int deleteAllByRoomId(@Param("roomId") UUID roomId);
+    boolean existsByRoomIdAndMessageId(UUID roomId, UUID messageId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM PinnedMessage p WHERE p.roomId = :roomId AND p.messageId = :messageId")

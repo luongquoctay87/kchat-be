@@ -20,6 +20,9 @@ import com.kchat.common.dto.chat.RoomMemberDto;
 import com.kchat.common.dto.chat.SendMessageRequest;
 import com.kchat.common.dto.chat.MuteRoomRequest;
 import com.kchat.common.dto.chat.TypingRequest;
+import com.kchat.common.exception.ApiException;
+import com.kchat.media.MediaHttp;
+import com.kchat.media.MediaStorage;
 import com.kchat.security.SecurityUtils;
 import com.kchat.service.BotWebhookService;
 import com.kchat.service.ChatService;
@@ -27,10 +30,13 @@ import com.kchat.ws.TypingRelayService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,15 +60,18 @@ public class RoomController {
     private final ChatService chatService;
     private final BotWebhookService botWebhookService;
     private final TypingRelayService typingRelayService;
+    private final MediaStorage mediaStorage;
 
     public RoomController(
             ChatService chatService,
             BotWebhookService botWebhookService,
-            TypingRelayService typingRelayService
+            TypingRelayService typingRelayService,
+            MediaStorage mediaStorage
     ) {
         this.chatService = chatService;
         this.botWebhookService = botWebhookService;
         this.typingRelayService = typingRelayService;
+        this.mediaStorage = mediaStorage;
     }
 
     @GetMapping
@@ -80,6 +89,26 @@ public class RoomController {
     @ResponseStatus(HttpStatus.CREATED)
     public RoomDto createGroup(@Valid @RequestBody CreateGroupRequest request) {
         return chatService.createGroup(SecurityUtils.requireUserId(), request);
+    }
+
+    @PostMapping(path = "/{roomId}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public RoomDto updateGroupAvatar(
+            @PathVariable UUID roomId,
+            @RequestPart("file") MultipartFile file
+    ) {
+        return chatService.updateGroupAvatar(SecurityUtils.requireUserId(), roomId, file);
+    }
+
+    @GetMapping("/{roomId}/avatar")
+    public ResponseEntity<Resource> getGroupAvatar(@PathVariable UUID roomId) {
+        UUID userId = SecurityUtils.requireUserId();
+        try {
+            return MediaHttp.inline(
+                    mediaStorage.open(chatService.requireGroupAvatarKey(userId, roomId)),
+                    "private, max-age=86400");
+        } catch (IllegalArgumentException | IOException ex) {
+            throw ApiException.notFound("Avatar file missing");
+        }
     }
 
     @GetMapping("/{roomId}/members")
@@ -117,12 +146,8 @@ public class RoomController {
     }
 
     @GetMapping("/{roomId}/pin")
-    public org.springframework.http.ResponseEntity<PinnedMessageDto> getPinned(@PathVariable UUID roomId) {
-        PinnedMessageDto dto = chatService.getPinnedMessage(SecurityUtils.requireUserId(), roomId);
-        if (dto == null) {
-            return org.springframework.http.ResponseEntity.noContent().build();
-        }
-        return org.springframework.http.ResponseEntity.ok(dto);
+    public List<PinnedMessageDto> listPinned(@PathVariable UUID roomId) {
+        return chatService.listPinnedMessages(SecurityUtils.requireUserId(), roomId);
     }
 
     @PutMapping("/{roomId}/pin")
@@ -133,10 +158,10 @@ public class RoomController {
         return chatService.pinMessage(SecurityUtils.requireUserId(), roomId, request);
     }
 
-    @DeleteMapping("/{roomId}/pin")
+    @DeleteMapping("/{roomId}/pin/{messageId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void unpinMessage(@PathVariable UUID roomId) {
-        chatService.unpinMessage(SecurityUtils.requireUserId(), roomId);
+    public void unpinMessage(@PathVariable UUID roomId, @PathVariable UUID messageId) {
+        chatService.unpinMessage(SecurityUtils.requireUserId(), roomId, messageId);
     }
 
     @PostMapping("/{roomId}/read")

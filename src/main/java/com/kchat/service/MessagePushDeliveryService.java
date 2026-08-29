@@ -115,7 +115,13 @@ public class MessagePushDeliveryService {
             case "file" -> message.fileName() == null || message.fileName().isBlank()
                     ? "[File]"
                     : "[File] " + message.fileName();
-            case "call_event" -> "[Cuộc gọi]";
+            case "call_event" -> {
+                String text = message.text();
+                if (text == null || text.isBlank()) {
+                    yield "[Cuộc gọi]";
+                }
+                yield truncate(text, 120);
+            }
             case "system" -> message.botTitle() == null || message.botTitle().isBlank()
                     ? "[Bot]"
                     : message.botTitle();

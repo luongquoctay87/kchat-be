@@ -133,7 +133,10 @@ public final class ChatMapper {
         String body = switch (type) {
             case image -> "[Ảnh]";
             case file -> "[File]";
-            case call_event -> "[Cuộc gọi]";
+            case call_event -> {
+                String c = message.getContent() != null ? message.getContent().trim() : "";
+                yield c.isBlank() ? "[Cuộc gọi]" : c;
+            }
             case system -> {
                 String c = message.getContent() != null ? message.getContent() : "";
                 if (c.isBlank()) {

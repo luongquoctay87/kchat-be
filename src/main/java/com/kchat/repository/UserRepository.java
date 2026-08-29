@@ -37,6 +37,23 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("""
             SELECT u FROM User u
             WHERE u.status = com.kchat.common.enums.UserStatus.active
+              AND u.id <> :excludeId
+              AND (
+                   LOWER(u.displayName) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(u.username) LIKE LOWER(CONCAT('%', :query, '%'))
+                OR LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))
+              )
+            ORDER BY LOWER(u.displayName) ASC
+            """)
+    List<User> searchActiveExcluding(
+            @Param("excludeId") UUID excludeId,
+            @Param("query") String query,
+            org.springframework.data.domain.Pageable pageable
+    );
+
+    @Query("""
+            SELECT u FROM User u
+            WHERE u.status = com.kchat.common.enums.UserStatus.active
               AND u.id IN :ids
             """)
     List<User> findActiveByIdIn(@Param("ids") Collection<UUID> ids);

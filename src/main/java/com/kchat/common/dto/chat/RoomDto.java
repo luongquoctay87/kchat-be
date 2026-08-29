@@ -13,6 +13,7 @@ public record RoomDto(
         Integer disappearingAfterSeconds,
         String myRole,
         boolean isMuted,
-        Long mutedUntilEpochMillis
+        Long mutedUntilEpochMillis,
+        String avatarUrl
 ) {
 }

@@ -43,6 +43,11 @@ public class S3MediaStorage implements MediaStorage {
     }
 
     @Override
+    public StoredObject storeGroupAvatar(UUID roomId, MultipartFile file) throws IOException {
+        return put(MediaKeys.groupAvatarKey(roomId, file.getOriginalFilename()), file);
+    }
+
+    @Override
     public ObjectStream open(String key) throws IOException {
         MediaKeys.requireSafeKey(key);
         try {

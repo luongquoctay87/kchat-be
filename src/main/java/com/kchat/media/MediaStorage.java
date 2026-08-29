@@ -24,6 +24,8 @@ public interface MediaStorage {
 
     StoredObject storeAvatar(UUID userId, MultipartFile file) throws IOException;
 
+    StoredObject storeGroupAvatar(UUID roomId, MultipartFile file) throws IOException;
+
     ObjectStream open(String key) throws IOException;
 
     void deleteQuietly(String key);

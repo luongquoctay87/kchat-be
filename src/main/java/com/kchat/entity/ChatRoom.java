@@ -102,6 +102,10 @@ public class ChatRoom {
         return avatarUrl;
     }
 
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
     public User getCreatedBy() {
         return createdBy;
     }

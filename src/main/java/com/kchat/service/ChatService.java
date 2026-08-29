@@ -48,9 +48,20 @@ public interface ChatService {
 
     List<ContactDto> listContacts(UUID userId);
 
+    List<ContactDto> searchUsers(UUID userId, String query);
+
+    void addContact(UUID userId, UUID contactUserId);
+
+    void removeContact(UUID userId, UUID contactUserId);
+
     DirectRoomDto openOrCreateDirectRoom(UUID userId, UUID peerUserId);
 
     RoomDto createGroup(UUID userId, CreateGroupRequest request);
+
+    RoomDto updateGroupAvatar(UUID userId, UUID roomId, MultipartFile file);
+
+    /** S3 object key for an existing group avatar; caller must be a room member. */
+    String requireGroupAvatarKey(UUID userId, UUID roomId);
 
     List<RoomMemberDto> listMembers(UUID userId, UUID roomId);
 
@@ -70,11 +81,11 @@ public interface ChatService {
 
     List<ReadReceiptDto> listMessageReceipts(UUID userId, UUID roomId, UUID messageId);
 
-    PinnedMessageDto getPinnedMessage(UUID userId, UUID roomId);
+    List<PinnedMessageDto> listPinnedMessages(UUID userId, UUID roomId);
 
     PinnedMessageDto pinMessage(UUID userId, UUID roomId, PinMessageRequest request);
 
-    void unpinMessage(UUID userId, UUID roomId);
+    void unpinMessage(UUID userId, UUID roomId, UUID messageId);
 
     /** Soft-delete all messages sent by the user (emergency wipe from client PIN). */
     WipeMessagesResultDto wipeAllMyMessages(UUID userId);

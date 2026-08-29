@@ -6,6 +6,7 @@ public record ContactDto(
         String subtitle,
         boolean isOnline,
         String email,
-        String avatarUrl
+        String avatarUrl,
+        boolean isContact
 ) {
 }

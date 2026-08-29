@@ -40,6 +40,8 @@ import com.kchat.entity.RoomMember;
 import com.kchat.entity.User;
 import com.kchat.entity.UserDevice;
 import com.kchat.entity.UserSettings;
+import com.kchat.media.AvatarRules;
+import com.kchat.media.MediaKeys;
 import com.kchat.media.MediaStorage;
 import com.kchat.repository.ChatMessageRepository;
 import com.kchat.repository.ChatRoomRepository;
@@ -51,9 +53,11 @@ import com.kchat.repository.MessageReadReceiptRepository;
 import com.kchat.repository.PinnedMessageRepository;
 import com.kchat.repository.RoomMemberRepository;
 import com.kchat.repository.SenderMessageRow;
+import com.kchat.repository.UserContactRepository;
 import com.kchat.repository.UserDeviceRepository;
 import com.kchat.repository.UserRepository;
 import com.kchat.repository.UserSettingsRepository;
+import com.kchat.entity.UserContact;
 import com.kchat.service.ChatService;
 import com.kchat.service.mapper.ChatMapper;
 import com.kchat.ws.MessageEventPublisher;
@@ -93,6 +97,7 @@ public class ChatServiceImpl implements ChatService {
 
     private static final int DEFAULT_MESSAGE_LIMIT = 50;
     private static final int MAX_MESSAGE_LIMIT = 100;
+    private static final int MAX_PINS_PER_ROOM = 10;
     private static final long MAX_MEDIA_BYTES = 25L * 1024 * 1024;
     private static final int MAX_GROUP_MEMBERS = 50;
     private static final Duration EDIT_WINDOW = Duration.ofMinutes(15);
@@ -112,6 +117,7 @@ public class ChatServiceImpl implements ChatService {
     private final UserRepository userRepository;
     private final UserSettingsRepository userSettingsRepository;
     private final UserDeviceRepository userDeviceRepository;
+    private final UserContactRepository userContactRepository;
     private final MessageEventPublisher messageEventPublisher;
     private final PresenceService presenceService;
     private final TypingService typingService;
@@ -130,6 +136,7 @@ public class ChatServiceImpl implements ChatService {
             UserRepository userRepository,
             UserSettingsRepository userSettingsRepository,
             UserDeviceRepository userDeviceRepository,
+            UserContactRepository userContactRepository,
             MessageEventPublisher messageEventPublisher,
             PresenceService presenceService,
             TypingService typingService,
@@ -147,6 +154,7 @@ public class ChatServiceImpl implements ChatService {
         this.userRepository = userRepository;
         this.userSettingsRepository = userSettingsRepository;
         this.userDeviceRepository = userDeviceRepository;
+        this.userContactRepository = userContactRepository;
         this.messageEventPublisher = messageEventPublisher;
         this.presenceService = presenceService;
         this.typingService = typingService;
@@ -667,9 +675,63 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional(readOnly = true)
     public List<ContactDto> listContacts(UUID userId) {
-        List<User> users = userRepository.findActiveExcluding(userId);
+        List<User> users = userContactRepository.findActiveContactUsers(userId);
+        return toContactDtos(userId, users, true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ContactDto> searchUsers(UUID userId, String query) {
+        String q = query == null ? "" : query.trim();
+        if (q.length() < 2) {
+            return List.of();
+        }
+        if (q.length() > 64) {
+            q = q.substring(0, 64);
+        }
+        List<User> users = userRepository.searchActiveExcluding(
+                userId,
+                q,
+                PageRequest.of(0, 30)
+        );
+        return toContactDtos(userId, users, false);
+    }
+
+    @Override
+    public void addContact(UUID userId, UUID contactUserId) {
+        if (userId.equals(contactUserId)) {
+            throw ApiException.badRequest("validation_error", "Không thể tự thêm mình vào danh bạ");
+        }
+        User peer = userRepository.findById(contactUserId)
+                .filter(u -> u.getStatus() == com.kchat.common.enums.UserStatus.active)
+                .orElseThrow(() -> ApiException.notFound("User not found"));
+        if (userContactRepository.existsByOwnerIdAndContactUserId(userId, contactUserId)) {
+            return;
+        }
+        UserContact row = new UserContact();
+        row.setOwnerId(userId);
+        row.setContactUserId(peer.getId());
+        userContactRepository.save(row);
+    }
+
+    @Override
+    public void removeContact(UUID userId, UUID contactUserId) {
+        userContactRepository.deleteByOwnerIdAndContactUserId(userId, contactUserId);
+    }
+
+    private List<ContactDto> toContactDtos(UUID ownerId, List<User> users, boolean allAreContacts) {
+        if (users.isEmpty()) {
+            return List.of();
+        }
         Set<UUID> online = presenceService.filterVisibleOnline(
                 users.stream().map(User::getId).toList());
+        Set<UUID> contactIds;
+        if (allAreContacts) {
+            contactIds = users.stream().map(User::getId).collect(Collectors.toSet());
+        } else {
+            List<UUID> ids = users.stream().map(User::getId).toList();
+            contactIds = new HashSet<>(userContactRepository.findContactUserIdsAmong(ownerId, ids));
+        }
         List<ContactDto> contacts = new ArrayList<>(users.size());
         for (User user : users) {
             boolean isOnline = online.contains(user.getId());
@@ -682,7 +744,8 @@ public class ChatServiceImpl implements ChatService {
                     subtitle,
                     isOnline,
                     user.getEmail() != null ? user.getEmail() : "",
-                    UserServiceImpl.publicAvatarUrl(user)
+                    UserServiceImpl.publicAvatarUrl(user),
+                    contactIds.contains(user.getId())
             ));
         }
         return contacts;
@@ -722,7 +785,7 @@ public class ChatServiceImpl implements ChatService {
      * Existing DMs always reopen.
      * <ul>
      *   <li>{@code everyone} — anyone may start</li>
-     *   <li>{@code contacts} — only users who already share a room/group</li>
+     *   <li>{@code contacts} — initiator must be in the peer's contact list</li>
      *   <li>{@code none} — nobody may start a new DM</li>
      * </ul>
      */
@@ -739,10 +802,10 @@ public class ChatServiceImpl implements ChatService {
             throw ApiException.forbidden("Người này không nhận tin nhắn riêng mới");
         }
         if ("contacts".equals(privacy)) {
-            boolean isContact = roomMemberRepository.findPeerUserIds(peerUserId).contains(initiatorId);
+            boolean isContact = userContactRepository.existsByOwnerIdAndContactUserId(peerUserId, initiatorId);
             if (!isContact) {
                 throw ApiException.forbidden(
-                        "Người này chỉ nhận tin nhắn riêng từ người đã từng chat chung");
+                        "Người này chỉ nhận tin nhắn riêng từ danh bạ của họ");
             }
         }
     }
@@ -827,8 +890,13 @@ public class ChatServiceImpl implements ChatService {
             memberships.add(membership);
         }
         roomMemberRepository.saveAll(memberships);
+        room.touch();
+        postGroupNotice(
+                room,
+                displayName(me) + " đã tạo nhóm với " + joinDisplayNames(members));
 
-        return toRoomDto(room, owner, memberships.size(), null, false, null, userId);
+        ChatMessage latest = loadLatestMessages(List.of(room.getId())).get(room.getId());
+        return toRoomDto(room, owner, memberships.size(), latest, false, null, userId);
     }
 
     @Override
@@ -909,6 +977,7 @@ public class ChatServiceImpl implements ChatService {
         }
 
         Instant now = Instant.now();
+        List<User> added = new ArrayList<>();
         for (User user : users) {
             RoomMember existing = roomMemberRepository.findByRoomIdAndUserId(roomId, user.getId())
                     .orElse(null);
@@ -928,6 +997,7 @@ public class ChatServiceImpl implements ChatService {
                 membership.setRole(RoomRoles.MEMBER);
                 roomMemberRepository.save(membership);
             }
+            added.add(user);
         }
         if (roomMemberRepository.findActiveMemberUserIds(roomId).size() > MAX_GROUP_MEMBERS) {
             throw ApiException.badRequest(
@@ -935,6 +1005,13 @@ public class ChatServiceImpl implements ChatService {
                     "Group supports at most " + MAX_GROUP_MEMBERS + " members");
         }
         room.touch();
+        if (!added.isEmpty()) {
+            User actorUser = userRepository.findById(userId)
+                    .orElseThrow(() -> ApiException.unauthorized("User not found"));
+            postGroupNotice(
+                    room,
+                    displayName(actorUser) + " đã thêm " + joinDisplayNames(added) + " vào nhóm");
+        }
     }
 
     @Override
@@ -961,9 +1038,15 @@ public class ChatServiceImpl implements ChatService {
         if (RoomRoles.ADMIN.equals(target.getRole()) && !RoomRoles.OWNER.equals(actor.getRole())) {
             throw ApiException.forbidden("Only the owner can remove an admin");
         }
+        User targetUser = target.getUser();
+        User actorUser = userRepository.findById(userId)
+                .orElseThrow(() -> ApiException.unauthorized("User not found"));
         target.setLeftAt(Instant.now());
         roomMemberRepository.save(target);
         room.touch();
+        postGroupNotice(
+                room,
+                displayName(actorUser) + " đã xóa " + displayName(targetUser) + " khỏi nhóm");
     }
 
     @Override
@@ -985,6 +1068,8 @@ public class ChatServiceImpl implements ChatService {
             });
         }
 
+        User leaving = userRepository.findById(userId)
+                .orElseThrow(() -> ApiException.unauthorized("User not found"));
         membership.setLeftAt(Instant.now());
         if (RoomRoles.OWNER.equals(membership.getRole())) {
             membership.setRole(RoomRoles.MEMBER);
@@ -995,6 +1080,68 @@ public class ChatServiceImpl implements ChatService {
             room.setArchived(true);
         }
         room.touch();
+        if (!room.isArchived()) {
+            postGroupNotice(room, displayName(leaving) + " đã rời nhóm");
+        }
+    }
+
+    /**
+     * Timeline notice for group membership changes.
+     * Stored as {@link MessageType#call_event} so Android renders the existing centered notice UI
+     * (same as call summaries); preview/push use the message content text.
+     */
+    private void postGroupNotice(ChatRoom room, String content) {
+        if (room.getType() != RoomType.group) {
+            return;
+        }
+        String text = content != null ? content.trim() : "";
+        if (text.isEmpty()) {
+            return;
+        }
+        ChatMessage message = new ChatMessage();
+        message.setRoom(room);
+        message.setSender(null);
+        message.setType(MessageType.call_event);
+        message.setContent(text);
+        chatMessageRepository.saveAndFlush(message);
+        room.touch();
+
+        ChatMessage saved = chatMessageRepository.findActiveById(message.getId()).orElse(message);
+        List<UUID> memberIds = roomMemberRepository.findActiveMemberUserIds(room.getId());
+        if (memberIds.isEmpty()) {
+            return;
+        }
+        MessageDto dto = ChatMapper.toMessageDto(saved, memberIds.get(0), null, true);
+        UUID roomId = room.getId();
+        runAfterCommit(() -> messageEventPublisher.messageCreated(roomId, null, memberIds, dto));
+    }
+
+    private static String displayName(User user) {
+        if (user == null) {
+            return "Thành viên";
+        }
+        String name = user.getDisplayName();
+        if (name == null || name.isBlank()) {
+            return user.loginName() != null ? user.loginName() : "Thành viên";
+        }
+        return name.trim();
+    }
+
+    private static String joinDisplayNames(List<User> users) {
+        if (users == null || users.isEmpty()) {
+            return "thành viên";
+        }
+        if (users.size() == 1) {
+            return displayName(users.get(0));
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < users.size(); i++) {
+            if (i > 0) {
+                sb.append(i == users.size() - 1 ? " và " : ", ");
+            }
+            sb.append(displayName(users.get(i)));
+        }
+        return sb.toString();
     }
 
     @Override
@@ -1106,8 +1253,70 @@ public class ChatServiceImpl implements ChatService {
                 room.getDisappearingAfterSeconds(),
                 membership.getRole(),
                 isMuted,
-                mutedUntilEpoch
+                mutedUntilEpoch,
+                publicGroupAvatarUrl(room)
         );
+    }
+
+    /** Relative URL clients resolve against API base; includes cache-busting version. */
+    static String publicGroupAvatarUrl(ChatRoom room) {
+        if (room == null || room.getId() == null) {
+            return null;
+        }
+        String key = room.getAvatarUrl();
+        if (!MediaKeys.isGroupAvatarKey(room.getId(), key)) {
+            return null;
+        }
+        String version = key.substring(key.lastIndexOf('/') + 1);
+        String encoded = java.net.URLEncoder.encode(version, java.nio.charset.StandardCharsets.UTF_8);
+        return "/rooms/" + room.getId() + "/avatar?v=" + encoded;
+    }
+
+    @Override
+    public RoomDto updateGroupAvatar(UUID userId, UUID roomId, org.springframework.web.multipart.MultipartFile file) {
+        RoomMember membership = requireGroupManager(roomId, userId);
+        ChatRoom room = membership.getRoom();
+        if (file == null || file.isEmpty()) {
+            throw ApiException.badRequest("validation_error", "file is required");
+        }
+        if (file.getSize() > AvatarRules.MAX_BYTES) {
+            throw ApiException.badRequest("validation_error", "Avatar must be at most 5MB");
+        }
+        if (!AvatarRules.isAllowedMime(file.getContentType())) {
+            throw ApiException.badRequest("validation_error", "Avatar must be JPEG, PNG, WebP, or GIF");
+        }
+
+        String previousKey = room.getAvatarUrl();
+        MediaStorage.StoredObject stored;
+        try {
+            stored = mediaStorage.storeGroupAvatar(roomId, file);
+        } catch (IOException ex) {
+            throw ApiException.badRequest("upload_failed", "Could not store avatar");
+        }
+        room.setAvatarUrl(stored.key());
+        room.touch();
+        chatRoomRepository.saveAndFlush(room);
+
+        if (previousKey != null && !previousKey.equals(stored.key())) {
+            runAfterCommit(() -> mediaStorage.deleteQuietly(previousKey));
+        }
+
+        int count = roomMemberRepository.findActiveMemberUserIds(roomId).size();
+        ChatMessage latest = loadLatestMessages(List.of(roomId)).get(room.getId());
+        return toRoomDto(room, membership, count, latest, false, null, userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String requireGroupAvatarKey(UUID userId, UUID roomId) {
+        requireMembership(roomId, userId);
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> ApiException.notFound("Room not found"));
+        String key = room.getAvatarUrl();
+        if (!MediaKeys.isGroupAvatarKey(roomId, key)) {
+            throw ApiException.notFound("Avatar not found");
+        }
+        return key;
     }
 
     @Override
@@ -1209,11 +1418,11 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional(readOnly = true)
-    public PinnedMessageDto getPinnedMessage(UUID userId, UUID roomId) {
+    public List<PinnedMessageDto> listPinnedMessages(UUID userId, UUID roomId) {
         requireMembership(roomId, userId);
-        return pinnedMessageRepository.findLatestByRoomId(roomId)
+        return pinnedMessageRepository.findByRoomIdOrderByPinnedAtDesc(roomId).stream()
                 .map(this::toPinnedDto)
-                .orElse(null);
+                .toList();
     }
 
     @Override
@@ -1228,10 +1437,15 @@ public class ChatServiceImpl implements ChatService {
         ChatMessage message = chatMessageRepository.findActiveById(request.messageId())
                 .orElseThrow(() -> ApiException.notFound("Message not found"));
 
-        // One pin per room for the banner UI.
-        // deleteAllByRoomId clears the persistence context — do not re-query via JOIN FETCH
-        // on the association; build the DTO from the message we already loaded.
-        pinnedMessageRepository.deleteAllByRoomId(roomId);
+        if (pinnedMessageRepository.existsByRoomIdAndMessageId(roomId, message.getId())) {
+            return new PinnedMessageDto(message.getId().toString(), pinPreview(message));
+        }
+        if (pinnedMessageRepository.countByRoomId(roomId) >= MAX_PINS_PER_ROOM) {
+            throw ApiException.badRequest(
+                    "pin_limit",
+                    "Mỗi phòng chỉ ghim tối đa " + MAX_PINS_PER_ROOM + " tin nhắn");
+        }
+
         PinnedMessage pin = new PinnedMessage();
         pin.setRoomId(roomId);
         pin.setMessage(message);
@@ -1241,10 +1455,10 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public void unpinMessage(UUID userId, UUID roomId) {
+    public void unpinMessage(UUID userId, UUID roomId, UUID messageId) {
         RoomMember membership = requireMembership(roomId, userId);
         assertChannelManagerIfChannel(membership);
-        pinnedMessageRepository.deleteAllByRoomId(roomId);
+        pinnedMessageRepository.deleteByRoomIdAndMessageId(roomId, messageId);
     }
 
     private PinnedMessageDto toPinnedDto(PinnedMessage pin) {
