@@ -608,38 +608,59 @@ public class ChatServiceImpl implements ChatService {
                 : request.platform().trim().toLowerCase();
         String deviceName = request.deviceName().trim();
 
-        userDeviceRepository.findByFcmToken(fcmToken).ifPresent(existing -> {
-            if (!existing.getUser().getId().equals(userId)) {
-                throw ApiException.conflict("FCM token belongs to another account");
-            }
-        });
-
-        UserDevice device = userDeviceRepository.findByFcmToken(fcmToken)
-                .orElseGet(UserDevice::new);
-        device.setUser(user);
-        device.setFcmToken(fcmToken);
-        device.setDeviceName(deviceName);
-        device.setPlatform(platform);
-        device.setLastActiveAt(Instant.now());
-        if (request.utcOffsetMinutes() != null) {
-            device.setUtcOffsetMinutes(request.utcOffsetMinutes());
-        }
-        userDeviceRepository.save(device);
+        saveRegisteredDevice(user, fcmToken, platform, deviceName, request.utcOffsetMinutes());
 
         // Token rotation: one real FCM row per user + device name (keep dev: session row).
         if (!fcmToken.startsWith("dev:")) {
             for (UserDevice other : userDeviceRepository.findByUser_IdOrderByLastActiveAtDesc(userId)) {
-                if (other.getId().equals(device.getId())) {
+                if (other.getFcmToken() == null) {
                     continue;
                 }
                 String otherToken = other.getFcmToken();
-                if (otherToken != null
-                        && !otherToken.startsWith("dev:")
+                if (!otherToken.startsWith("dev:")
                         && !otherToken.equals(fcmToken)
                         && deviceName.equals(other.getDeviceName())) {
                     userDeviceRepository.delete(other);
                 }
             }
+        }
+    }
+
+    private void saveRegisteredDevice(
+            User user,
+            String fcmToken,
+            String platform,
+            String deviceName,
+            Integer utcOffsetMinutes
+    ) {
+        UserDevice device = userDeviceRepository.findByFcmToken(fcmToken).orElseGet(UserDevice::new);
+        applyDeviceFields(device, user, fcmToken, platform, deviceName, utcOffsetMinutes);
+        try {
+            userDeviceRepository.save(device);
+        } catch (DataIntegrityViolationException ex) {
+            // Concurrent POST /devices with the same token — reload and upsert.
+            UserDevice existing = userDeviceRepository.findByFcmToken(fcmToken)
+                    .orElseThrow(() -> ex);
+            applyDeviceFields(existing, user, fcmToken, platform, deviceName, utcOffsetMinutes);
+            userDeviceRepository.save(existing);
+        }
+    }
+
+    private static void applyDeviceFields(
+            UserDevice device,
+            User user,
+            String fcmToken,
+            String platform,
+            String deviceName,
+            Integer utcOffsetMinutes
+    ) {
+        device.setUser(user);
+        device.setFcmToken(fcmToken);
+        device.setDeviceName(deviceName);
+        device.setPlatform(platform);
+        device.setLastActiveAt(Instant.now());
+        if (utcOffsetMinutes != null) {
+            device.setUtcOffsetMinutes(utcOffsetMinutes);
         }
     }
 

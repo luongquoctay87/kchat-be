@@ -213,7 +213,7 @@ curl -sS https://chat-api-test.tayjava.net/actuator/health
 | Chỉ push image | `cd k-chat/backend && ./scripts/push-ecr.sh` |
 | Redeploy | `./infra/scripts/redeploy-staging.sh kchat --wait` |
 | DB trống | `./infra/scripts/seed-staging-kchat.sh` |
-| Bật FCM | `./infra/scripts/enable-staging-kchat-fcm.sh` |
+| Bật FCM | `./infra/scripts/enable-staging-kchat-fcm.sh` · hướng dẫn: [`docs/FIREBASE_SETUP.md`](../docs/FIREBASE_SETUP.md) |
 | Terraform | [`infra/terraform/README.md`](../../infra/terraform/README.md) § 4b |
 
 > Staging **không seed user** — đăng ký qua app Android.  
@@ -246,3 +246,4 @@ curl -sS https://chat-api-test.tayjava.net/actuator/health
 | DB schema | [`DB_SCHEMA.md`](../docs/DB_SCHEMA.md) |
 | Android | [`android/README.md`](../android/README.md) |
 | Backlog | [`BACKLOG.md`](../docs/BACKLOG.md) |
+| **Prod deploy** | [`PROD_DEPLOY.md`](../docs/PROD_DEPLOY.md) |

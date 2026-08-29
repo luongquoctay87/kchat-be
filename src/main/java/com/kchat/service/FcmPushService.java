@@ -58,7 +58,8 @@ public class FcmPushService {
                         .build())
                 .build();
         try {
-            FirebaseMessaging.getInstance().send(message);
+            String messageId = FirebaseMessaging.getInstance().send(message);
+            log.debug("FCM sent messageId={} room={}", messageId, roomId);
         } catch (FirebaseMessagingException ex) {
             if (isStaleToken(ex)) {
                 log.info("Removing stale FCM token");
