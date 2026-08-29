@@ -7,6 +7,8 @@ public record ContactDto(
         boolean isOnline,
         String email,
         String avatarUrl,
-        boolean isContact
+        boolean isContact,
+        String username,
+        String phone
 ) {
 }

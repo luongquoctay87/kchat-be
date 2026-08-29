@@ -682,12 +682,9 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional(readOnly = true)
     public List<ContactDto> searchUsers(UUID userId, String query) {
-        String q = query == null ? "" : query.trim();
+        String q = sanitizeSearchQuery(query);
         if (q.length() < 2) {
             return List.of();
-        }
-        if (q.length() > 64) {
-            q = q.substring(0, 64);
         }
         List<User> users = userRepository.searchActiveExcluding(
                 userId,
@@ -695,6 +692,42 @@ public class ChatServiceImpl implements ChatService {
                 PageRequest.of(0, 30)
         );
         return toContactDtos(userId, users, false);
+    }
+
+    /** Letters/digits/spaces/common punctuation only — strips emoji and symbols. */
+    private static String sanitizeSearchQuery(String query) {
+        if (query == null || query.isBlank()) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder(Math.min(query.length(), 64));
+        query.codePoints().forEach(cp -> {
+            if (out.length() >= 64) {
+                return;
+            }
+            if (isAllowedSearchCodePoint(cp)) {
+                out.appendCodePoint(cp);
+            }
+        });
+        return out.toString().trim();
+    }
+
+    private static boolean isAllowedSearchCodePoint(int cp) {
+        int type = Character.getType(cp);
+        return type == Character.UPPERCASE_LETTER
+                || type == Character.LOWERCASE_LETTER
+                || type == Character.TITLECASE_LETTER
+                || type == Character.MODIFIER_LETTER
+                || type == Character.OTHER_LETTER
+                || type == Character.DECIMAL_DIGIT_NUMBER
+                || type == Character.LETTER_NUMBER
+                || type == Character.SPACE_SEPARATOR
+                || type == Character.CONNECTOR_PUNCTUATION
+                || type == Character.DASH_PUNCTUATION
+                || type == Character.START_PUNCTUATION
+                || type == Character.END_PUNCTUATION
+                || type == Character.INITIAL_QUOTE_PUNCTUATION
+                || type == Character.FINAL_QUOTE_PUNCTUATION
+                || type == Character.OTHER_PUNCTUATION;
     }
 
     @Override
@@ -745,7 +778,9 @@ public class ChatServiceImpl implements ChatService {
                     isOnline,
                     user.getEmail() != null ? user.getEmail() : "",
                     UserServiceImpl.publicAvatarUrl(user),
-                    contactIds.contains(user.getId())
+                    contactIds.contains(user.getId()),
+                    user.getUsername() != null ? user.getUsername() : "",
+                    user.getPhone() != null ? user.getPhone() : ""
             ));
         }
         return contacts;
