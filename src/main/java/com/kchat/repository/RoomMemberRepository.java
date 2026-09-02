@@ -1,7 +1,6 @@
 package com.kchat.repository;
 
 import com.kchat.entity.RoomMember;
-import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -104,6 +103,14 @@ public interface RoomMemberRepository extends JpaRepository<RoomMember, UUID> {
             @Param("userId") UUID userId
     );
 
+    @Query("""
+            SELECT m FROM RoomMember m
+            JOIN FETCH m.user
+            JOIN FETCH m.room
+            WHERE m.room.id = :roomId AND m.leftAt IS NOT NULL
+            """)
+    List<RoomMember> findLeftMembers(@Param("roomId") UUID roomId);
+
     /**
      * Users who share at least one active room with {@code userId} (for presence fan-out).
      */
@@ -117,12 +124,4 @@ public interface RoomMemberRepository extends JpaRepository<RoomMember, UUID> {
               AND m2.leftAt IS NULL
             """)
     List<UUID> findPeerUserIds(@Param("userId") UUID userId);
-
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("""
-            UPDATE RoomMember m
-            SET m.leftAt = :leftAt
-            WHERE m.user.id = :userId AND m.leftAt IS NULL
-            """)
-    int leaveAllActiveForUser(@Param("userId") UUID userId, @Param("leftAt") Instant leftAt);
 }

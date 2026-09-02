@@ -330,6 +330,9 @@ public class ChatServiceImpl implements ChatService {
         }
 
         ChatRoom room = membership.getRoom();
+        if (room.getType() == RoomType.direct) {
+            restoreLeftDirectMemberships(roomId);
+        }
         ChatMessage message = new ChatMessage();
         message.setRoom(room);
         message.setSender(sender);
@@ -390,17 +393,9 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public WipeMessagesResultDto wipeAllMyMessages(UUID userId) {
-        Instant now = Instant.now();
-        List<UUID> roomIds = roomMemberRepository.findActiveMemberships(userId).stream()
-                .map(m -> m.getRoom().getId())
-                .distinct()
-                .toList();
-
-        int total = wipeSentMessages(userId, now);
-        int roomsLeft = roomIds.isEmpty() ? 0 : roomMemberRepository.leaveAllActiveForUser(userId, now);
-        archiveRoomsWithNoActiveMembers(roomIds);
-
-        return new WipeMessagesResultDto(total, roomsLeft);
+        // Soft-delete sent messages only — keep membership so WS/push fanout still works.
+        int total = wipeSentMessages(userId, Instant.now());
+        return new WipeMessagesResultDto(total, /* roomsLeft */ 0);
     }
 
     private int wipeSentMessages(UUID userId, Instant now) {
@@ -426,18 +421,6 @@ public class ChatServiceImpl implements ChatService {
         return total;
     }
 
-    private void archiveRoomsWithNoActiveMembers(List<UUID> roomIds) {
-        for (UUID roomId : roomIds) {
-            if (roomMemberRepository.findActiveMemberUserIds(roomId).isEmpty()) {
-                chatRoomRepository.findById(roomId).ifPresent(room -> {
-                    room.setArchived(true);
-                    room.touch();
-                    chatRoomRepository.save(room);
-                });
-            }
-        }
-    }
-
     private void reactivateMembershipIfNeeded(UUID userId, UUID roomId) {
         roomMemberRepository.findByRoomIdAndUserId(roomId, userId).ifPresent(membership -> {
             if (membership.getLeftAt() == null) {
@@ -446,13 +429,40 @@ public class ChatServiceImpl implements ChatService {
             membership.setLeftAt(null);
             membership.setUnreadCount(0);
             roomMemberRepository.save(membership);
-            ChatRoom room = membership.getRoom();
-            if (room.isArchived()) {
-                room.setArchived(false);
-                room.touch();
-                chatRoomRepository.save(room);
-            }
+            unarchiveRoomIfNeeded(membership.getRoom());
         });
+    }
+
+    /**
+     * Direct chats cannot be left intentionally. Clear leftover {@code left_at} from older
+     * emergency-wipe behavior so delivery fanout includes both peers again.
+     * Does not reset unread — caller increments unread for the new message afterward.
+     */
+    private void restoreLeftDirectMemberships(UUID roomId) {
+        List<RoomMember> left = roomMemberRepository.findLeftMembers(roomId);
+        if (left.isEmpty()) {
+            return;
+        }
+        for (RoomMember membership : left) {
+            membership.setLeftAt(null);
+            roomMemberRepository.save(membership);
+            unarchiveRoomIfNeeded(membership.getRoom());
+        }
+    }
+
+    private void unarchiveRoomIfNeeded(ChatRoom room) {
+        if (!room.isArchived()) {
+            return;
+        }
+        room.setArchived(false);
+        room.touch();
+        chatRoomRepository.save(room);
+    }
+
+    private DirectRoomDto reopenDirectRoom(UUID roomId, UUID userId, UUID peerUserId) {
+        reactivateMembershipIfNeeded(userId, roomId);
+        reactivateMembershipIfNeeded(peerUserId, roomId);
+        return new DirectRoomDto(roomId.toString());
     }
 
     private void publishSenderMessageDeletions(List<SenderMessageRow> rows) {
@@ -547,6 +557,9 @@ public class ChatServiceImpl implements ChatService {
         }
 
         ChatRoom room = membership.getRoom();
+        if (room.getType() == RoomType.direct) {
+            restoreLeftDirectMemberships(roomId);
+        }
         ChatMessage message = new ChatMessage();
         message.setRoom(room);
         message.setSender(sender);
@@ -801,16 +814,14 @@ public class ChatServiceImpl implements ChatService {
         UUID b = UuidOrder.larger(userId, peerUserId);
         Optional<DirectRoomPair> existing = directRoomPairRepository.findByOrderedUserPair(a, b);
         if (existing.isPresent()) {
-            UUID roomId = existing.get().getRoomId();
-            reactivateMembershipIfNeeded(userId, roomId);
-            return new DirectRoomDto(roomId.toString());
+            return reopenDirectRoom(existing.get().getRoomId(), userId, peerUserId);
         }
         assertCanStartDirectChat(userId, peerUserId);
         try {
             return createDirectRoom(me, peer, a, b);
         } catch (ObjectOptimisticLockingFailureException | DataIntegrityViolationException ex) {
             return directRoomPairRepository.findByOrderedUserPair(a, b)
-                    .map(pair -> new DirectRoomDto(pair.getRoomId().toString()))
+                    .map(pair -> reopenDirectRoom(pair.getRoomId(), userId, peerUserId))
                     .orElseThrow(() -> ex);
         }
     }
