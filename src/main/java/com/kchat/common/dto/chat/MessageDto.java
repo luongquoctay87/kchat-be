@@ -1,5 +1,6 @@
 package com.kchat.common.dto.chat;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public record MessageDto(
@@ -11,7 +12,7 @@ public record MessageDto(
         String imageLabel,
         String mediaUrl,
         String senderName,
-        boolean isMine,
+        @JsonProperty("is_mine") boolean isMine,
         String time,
         Long createdAt,
         String replyAuthor,

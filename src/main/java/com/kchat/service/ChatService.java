@@ -50,7 +50,7 @@ public interface ChatService {
 
     List<ContactDto> searchUsers(UUID userId, String query);
 
-    void addContact(UUID userId, UUID contactUserId);
+    ContactDto addContact(UUID userId, UUID contactUserId);
 
     void removeContact(UUID userId, UUID contactUserId);
 

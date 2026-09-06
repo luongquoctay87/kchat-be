@@ -96,7 +96,10 @@ public class MessagePushDeliveryService {
                             roomId.toString(),
                             title,
                             senderName,
-                            body
+                            body,
+                            message == null ? null : message.id(),
+                            message == null ? null : message.createdAt(),
+                            message == null ? null : message.type()
                     );
                 }
             }

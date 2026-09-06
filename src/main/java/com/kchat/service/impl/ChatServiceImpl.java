@@ -744,20 +744,21 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public void addContact(UUID userId, UUID contactUserId) {
+    public ContactDto addContact(UUID userId, UUID contactUserId) {
         if (userId.equals(contactUserId)) {
             throw ApiException.badRequest("validation_error", "Không thể tự thêm mình vào danh bạ");
         }
         User peer = userRepository.findById(contactUserId)
                 .filter(u -> u.getStatus() == com.kchat.common.enums.UserStatus.active)
                 .orElseThrow(() -> ApiException.notFound("User not found"));
-        if (userContactRepository.existsByOwnerIdAndContactUserId(userId, contactUserId)) {
-            return;
+        if (!userContactRepository.existsByOwnerIdAndContactUserId(userId, contactUserId)) {
+            User owner = userRepository.getReferenceById(userId);
+            UserContact row = new UserContact();
+            row.setOwner(owner);
+            row.setContactUser(peer);
+            userContactRepository.save(row);
         }
-        UserContact row = new UserContact();
-        row.setOwnerId(userId);
-        row.setContactUserId(peer.getId());
-        userContactRepository.save(row);
+        return toContactDtos(userId, List.of(peer), true).get(0);
     }
 
     @Override

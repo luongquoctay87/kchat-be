@@ -36,9 +36,8 @@ public class ContactsController {
     }
 
     @PostMapping("/{userId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void addContact(@PathVariable("userId") UUID userId) {
-        chatService.addContact(SecurityUtils.requireUserId(), userId);
+    public ContactDto addContact(@PathVariable("userId") UUID userId) {
+        return chatService.addContact(SecurityUtils.requireUserId(), userId);
     }
 
     @DeleteMapping("/{userId}")
