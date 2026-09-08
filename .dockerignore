@@ -2,7 +2,8 @@
 .DS_Store
 .git
 .idea
-target
+target/*
+!target/kchat-api.jar
 logs
 .env
 *.iml

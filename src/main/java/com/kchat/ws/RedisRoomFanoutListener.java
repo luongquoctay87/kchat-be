@@ -69,9 +69,10 @@ public class RedisRoomFanoutListener implements MessageListener {
         if (!recipients.isArray() || recipients.isEmpty()) {
             return;
         }
+        String type = root.path("type").asText();
         // Strip recipient_ids before sending to clients.
         ObjectNode envelope = objectMapper.createObjectNode();
-        envelope.put("type", root.path("type").asText());
+        envelope.put("type", type);
         ObjectNode outPayload = payload.deepCopy();
         outPayload.remove("recipient_ids");
         envelope.set("payload", outPayload);
@@ -79,9 +80,8 @@ public class RedisRoomFanoutListener implements MessageListener {
         for (JsonNode node : recipients) {
             try {
                 UUID recipientId = UUID.fromString(node.asText());
-                if (!sessionRegistry.hasSessions(recipientId)) {
-                    log.debug("No WS session for call recipient {}", recipientId);
-                }
+                boolean hasWs = sessionRegistry.hasSessions(recipientId);
+                log.info("Dispatching WS {} to recipient {} (hasWsSession={})", type, recipientId, hasWs);
                 sessionRegistry.sendToUser(recipientId, json);
             } catch (IllegalArgumentException ignored) {
                 // skip

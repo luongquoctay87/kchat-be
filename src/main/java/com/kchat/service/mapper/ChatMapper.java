@@ -44,7 +44,7 @@ public final class ChatMapper {
             List<ReactionDto> reactions,
             MessageAttachment replyAttachment
     ) {
-        boolean mine = message.getSender() != null && me.equals(message.getSender().getId());
+        boolean mine = message.getSender() != null && me != null && me.equals(message.getSender().getId());
         MessageType type = message.getType() != null ? message.getType() : MessageType.text;
         String text = message.getContent() != null ? message.getContent() : "";
 

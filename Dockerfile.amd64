@@ -1,0 +1,10 @@
+FROM --platform=linux/amd64 eclipse-temurin:21-jre-alpine
+RUN apk add --no-cache wget \
+    && addgroup -S kchat && adduser -S kchat -G kchat
+WORKDIR /app
+COPY target/kchat-api.jar app.jar
+RUN chown kchat:kchat app.jar
+USER kchat
+ENV SPRING_PROFILES_ACTIVE=prod
+EXPOSE 8864
+ENTRYPOINT ["java", "-jar", "app.jar"]

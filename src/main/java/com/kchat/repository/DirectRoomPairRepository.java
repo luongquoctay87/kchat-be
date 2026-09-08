@@ -27,4 +27,10 @@ public interface DirectRoomPairRepository extends JpaRepository<DirectRoomPair, 
             @Param("userAId") UUID userAId,
             @Param("userBId") UUID userBId
     );
+
+    @Query("""
+            SELECT p.roomId FROM DirectRoomPair p
+            WHERE p.userA.id = :userId OR p.userB.id = :userId
+            """)
+    List<UUID> findDirectRoomIdsByUserId(@Param("userId") UUID userId);
 }

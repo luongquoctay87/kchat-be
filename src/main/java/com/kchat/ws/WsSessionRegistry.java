@@ -63,7 +63,7 @@ public class WsSessionRegistry {
                     session.sendMessage(message);
                 }
             } catch (IOException | IllegalStateException ex) {
-                log.debug("Failed to send WS to user {}: {}", userId, ex.getMessage());
+                log.warn("Failed to send WS to user {}: {}", userId, ex.getMessage());
                 sessions.remove(session);
             }
         }

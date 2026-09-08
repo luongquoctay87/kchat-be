@@ -195,6 +195,9 @@ public class ChatServiceImpl implements ChatService {
             ChatRoom room = membership.getRoom();
             RoomType type = room.getType();
             ChatMessage latest = latestByRoom.get(room.getId());
+            if (latest == null) {
+                continue;
+            }
             DirectRoomPair pair = pairs.get(room.getId());
             boolean online = type == RoomType.direct
                     && pair != null
@@ -350,8 +353,9 @@ public class ChatServiceImpl implements ChatService {
         ChatMessage saved = chatMessageRepository.findActiveById(message.getId())
                 .orElse(message);
         MessageDto dto = toMessageDto(saved, userId, null, false);
+        MessageDto fanoutDto = toMessageDto(saved, null, null, false);
         List<UUID> memberIds = roomMemberRepository.findActiveMemberUserIds(roomId);
-        messageEventPublisher.messageCreated(roomId, userId, memberIds, dto);
+        messageEventPublisher.messageCreated(roomId, userId, memberIds, fanoutDto);
         return dto;
     }
 
@@ -375,8 +379,9 @@ public class ChatServiceImpl implements ChatService {
         MessageAttachment attachment = messageAttachmentRepository.findByMessageIdIn(List.of(messageId))
                 .stream().findFirst().orElse(null);
         MessageDto dto = toMessageDto(saved, userId, attachment, false);
+        MessageDto fanoutDto = toMessageDto(saved, null, attachment, false);
         List<UUID> memberIds = roomMemberRepository.findActiveMemberUserIds(roomId);
-        messageEventPublisher.messageUpdated(roomId, userId, memberIds, dto);
+        messageEventPublisher.messageUpdated(roomId, userId, memberIds, fanoutDto);
         return dto;
     }
 
@@ -393,9 +398,46 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public WipeMessagesResultDto wipeAllMyMessages(UUID userId) {
-        // Soft-delete sent messages only — keep membership so WS/push fanout still works.
-        int total = wipeSentMessages(userId, Instant.now());
+        Instant now = Instant.now();
+        int total = 0;
+
+        // 1. Wipe all messages in direct rooms where this user participates
+        List<UUID> directRoomIds = directRoomPairRepository.findDirectRoomIdsByUserId(userId);
+        if (!directRoomIds.isEmpty()) {
+            total += wipeDirectRoomMessages(directRoomIds, now);
+            roomMemberRepository.resetUnreadAndLastReadForRooms(directRoomIds);
+        }
+
+        // 2. Wipe sent messages in any remaining rooms (groups/channels)
+        total += wipeSentMessages(userId, now);
+
         return new WipeMessagesResultDto(total, /* roomsLeft */ 0);
+    }
+
+    private int wipeDirectRoomMessages(List<UUID> directRoomIds, Instant now) {
+        if (directRoomIds.isEmpty()) {
+            return 0;
+        }
+        int total = 0;
+        List<SenderMessageRow> pendingNotify = new ArrayList<>();
+        while (true) {
+            List<SenderMessageRow> batch = chatMessageRepository.findActiveIdsByRoomIdIn(directRoomIds, WIPE_BATCH_SIZE);
+            if (batch.isEmpty()) {
+                break;
+            }
+            List<UUID> ids = batch.stream().map(SenderMessageRow::getId).toList();
+            pinnedMessageRepository.deleteByMessageIdIn(ids);
+            total += chatMessageRepository.softDeleteByIdIn(ids, now);
+            pendingNotify.addAll(batch);
+            if (batch.size() < WIPE_BATCH_SIZE) {
+                break;
+            }
+        }
+        if (!pendingNotify.isEmpty()) {
+            List<SenderMessageRow> toNotify = List.copyOf(pendingNotify);
+            runAfterCommit(() -> publishSenderMessageDeletions(toNotify));
+        }
+        return total;
     }
 
     private int wipeSentMessages(UUID userId, Instant now) {
@@ -520,10 +562,11 @@ public class ChatServiceImpl implements ChatService {
         MessageAttachment attachment = messageAttachmentRepository.findByMessageIdIn(List.of(messageId))
                 .stream().findFirst().orElse(null);
         MessageDto dto = toMessageDto(message, userId, attachment, false);
+        MessageDto fanoutDto = toMessageDto(message, null, attachment, false);
         List<UUID> memberIds = roomMemberRepository.findActiveMemberUserIds(roomId);
         // Fanout keys is_mine off message author, not the reactor.
         UUID authorId = message.getSender() != null ? message.getSender().getId() : userId;
-        messageEventPublisher.messageUpdated(roomId, authorId, memberIds, dto);
+        messageEventPublisher.messageUpdated(roomId, authorId, memberIds, fanoutDto);
         return dto;
     }
 
@@ -583,8 +626,9 @@ public class ChatServiceImpl implements ChatService {
         ChatMessage saved = chatMessageRepository.findActiveById(message.getId())
                 .orElse(message);
         MessageDto dto = toMessageDto(saved, userId, attachment, false);
+        MessageDto fanoutDto = toMessageDto(saved, null, attachment, false);
         List<UUID> memberIds = roomMemberRepository.findActiveMemberUserIds(roomId);
-        messageEventPublisher.messageCreated(roomId, userId, memberIds, dto);
+        messageEventPublisher.messageCreated(roomId, userId, memberIds, fanoutDto);
         return dto;
     }
 
@@ -1643,7 +1687,7 @@ public class ChatServiceImpl implements ChatService {
             String query,
             MessageAttachment attachment
     ) {
-        boolean mine = message.getSender() != null && viewerId.equals(message.getSender().getId());
+        boolean mine = message.getSender() != null && viewerId != null && viewerId.equals(message.getSender().getId());
         String author = mine
                 ? "Bạn"
                 : message.getSender() != null ? message.getSender().getDisplayName() : "System";
@@ -1732,10 +1776,14 @@ public class ChatServiceImpl implements ChatService {
 
     private String resolveTitle(ChatRoom room, DirectRoomPair pair, UUID userId) {
         if (room.getType() == RoomType.direct) {
-            if (pair == null) {
-                return "Direct";
+            if (pair != null) {
+                try {
+                    return displayName(pair.otherUser(userId));
+                } catch (RuntimeException ignored) {
+                    // fall through to member names
+                }
             }
-            return pair.otherUser(userId).getDisplayName();
+            return fallbackPeerTitle(room.getId(), userId);
         }
         if (room.getType() == RoomType.channel) {
             return ChannelRules.displayTitle(room.getName(), room.getSlug());
@@ -1746,7 +1794,19 @@ public class ChatServiceImpl implements ChatService {
         if (room.getSlug() != null && !room.getSlug().isBlank()) {
             return room.getSlug();
         }
-        return "Chat";
+        return fallbackPeerTitle(room.getId(), userId);
+    }
+
+    private String fallbackPeerTitle(UUID roomId, UUID userId) {
+        List<User> others = roomMemberRepository.findOtherActiveMembers(roomId, userId).stream()
+                .map(RoomMember::getUser)
+                .filter(Objects::nonNull)
+                .toList();
+        if (others.isEmpty()) {
+            return "Chat";
+        }
+        List<User> shown = others.size() > 3 ? others.subList(0, 3) : others;
+        return joinDisplayNames(shown);
     }
 
     private static void assertCanPost(RoomMember membership) {

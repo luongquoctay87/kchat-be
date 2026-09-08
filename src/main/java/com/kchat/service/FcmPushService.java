@@ -61,7 +61,7 @@ public class FcmPushService {
             data.put("created_at", Long.toString(createdAt));
         }
         if (messageType != null && !messageType.isBlank()) {
-            data.put("message_type", messageType);
+            data.put("msg_type", messageType);
         }
 
         // Notification + data: Android still shows a tray item when the app is killed.
@@ -77,6 +77,9 @@ public class FcmPushService {
                         .setPriority(AndroidConfig.Priority.HIGH)
                         .setNotification(AndroidNotification.builder()
                                 .setChannelId("kchat_messages")
+                                .setPriority(AndroidNotification.Priority.HIGH)
+                                .setDefaultSound(true)
+                                .setDefaultVibrateTimings(true)
                                 .setSound("default")
                                 .setTag(roomId)
                                 .build())
@@ -84,21 +87,106 @@ public class FcmPushService {
                 .build();
         try {
             String fcmMessageId = FirebaseMessaging.getInstance().send(message);
-            log.debug("FCM sent messageId={} room={}", fcmMessageId, roomId);
+            log.info("FCM sent messageId={} room={} tokenPrefix={}",
+                    fcmMessageId, roomId, fcmToken.substring(0, Math.min(10, fcmToken.length())));
         } catch (FirebaseMessagingException ex) {
             if (isStaleToken(ex)) {
-                log.info("Removing stale FCM token");
+                log.info("Removing stale FCM token (errorCode={}, message={})", ex.getMessagingErrorCode(), ex.getMessage());
                 userDeviceRepository.deleteByFcmToken(fcmToken);
             } else {
-                log.warn("FCM send failed: {}", ex.getMessagingErrorCode(), ex);
+                log.warn("FCM send failed: {} - {}", ex.getMessagingErrorCode(), ex.getMessage());
             }
         }
     }
 
+    public void sendCallIncoming(
+            String fcmToken,
+            String callId,
+            String roomId,
+            String callerName,
+            String callerId,
+            String callType
+    ) {
+        if (!isEnabled()) {
+            return;
+        }
+        String isVideoStr = "video".equalsIgnoreCase(callType) ? "video" : "thoại";
+        String title = "Cuộc gọi " + isVideoStr + " đến";
+        String preview = (callerName == null || callerName.isBlank() ? "k-chat" : callerName) + " đang gọi cho bạn";
+
+        java.util.HashMap<String, String> data = new java.util.HashMap<>();
+        data.put("type", "call_incoming");
+        data.put("call_id", callId);
+        data.put("room_id", roomId);
+        data.put("caller_name", callerName == null ? "" : callerName);
+        data.put("caller_id", callerId == null ? "" : callerId);
+        data.put("call_type", callType == null ? "voice" : callType);
+
+        Message message = Message.builder()
+                .setToken(fcmToken)
+                .putAllData(data)
+                .setNotification(Notification.builder()
+                        .setTitle(title)
+                        .setBody(preview)
+                        .build())
+                .setAndroidConfig(AndroidConfig.builder()
+                        .setPriority(AndroidConfig.Priority.HIGH)
+                        .setTtl(45_000L) // 45 seconds ring timeout
+                        .setNotification(AndroidNotification.builder()
+                                .setChannelId("kchat_calls")
+                                .setSound("default")
+                                .setTag("call_" + callId)
+                                .build())
+                        .build())
+                .build();
+        try {
+            String fcmMessageId = FirebaseMessaging.getInstance().send(message);
+            log.info("FCM sent call_incoming messageId={} callId={} tokenPrefix={}",
+                    fcmMessageId, callId, fcmToken.substring(0, Math.min(10, fcmToken.length())));
+        } catch (FirebaseMessagingException ex) {
+            if (isStaleToken(ex)) {
+                log.info("Removing stale FCM token (errorCode={}, message={})", ex.getMessagingErrorCode(), ex.getMessage());
+                userDeviceRepository.deleteByFcmToken(fcmToken);
+            } else {
+                log.warn("FCM call_incoming send failed tokenPrefix={}: {} - {}",
+                        fcmToken.substring(0, Math.min(10, fcmToken.length())),
+                        ex.getMessagingErrorCode(), ex.getMessage());
+            }
+        } catch (Exception ex) {
+            log.error("FCM unexpected failure for call_incoming callId={}", callId, ex);
+        }
+    }
+
+    public void sendCallEnded(
+            String fcmToken,
+            String callId,
+            String reason
+    ) {
+        if (!isEnabled()) {
+            return;
+        }
+        java.util.HashMap<String, String> data = new java.util.HashMap<>();
+        data.put("type", "call_ended");
+        data.put("call_id", callId);
+        data.put("reason", reason == null ? "ended" : reason);
+
+        Message message = Message.builder()
+                .setToken(fcmToken)
+                .putAllData(data)
+                .setAndroidConfig(AndroidConfig.builder()
+                        .setPriority(AndroidConfig.Priority.HIGH)
+                        .setTtl(10_000L)
+                        .build())
+                .build();
+        try {
+            FirebaseMessaging.getInstance().send(message);
+            log.info("FCM sent call_ended callId={} reason={} tokenPrefix={}",
+                    callId, reason, fcmToken.substring(0, Math.min(10, fcmToken.length())));
+        } catch (Exception ignored) {
+        }
+    }
+
     private static boolean isStaleToken(FirebaseMessagingException ex) {
-        MessagingErrorCode code = ex.getMessagingErrorCode();
-        return code == MessagingErrorCode.UNREGISTERED
-                || code == MessagingErrorCode.INVALID_ARGUMENT
-                || code == MessagingErrorCode.SENDER_ID_MISMATCH;
+        return ex.getMessagingErrorCode() == MessagingErrorCode.UNREGISTERED;
     }
 }

@@ -51,7 +51,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         if (newlyOnline && presenceService.canShowOnline(userId)) {
             presenceEventPublisher.presenceChanged(userId, true);
         }
-        log.debug("WS connected user={} session={}", userId, session.getId());
+        log.info("WS connected user={} session={}", userId, session.getId());
     }
 
     @Override
@@ -61,7 +61,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         if (!sessionRegistry.hasSessions(userId)) {
             goOffline(userId);
         }
-        log.debug("WS closed user={} session={} status={}", userId, session.getId(), status);
+        log.info("WS closed user={} session={} status={}", userId, session.getId(), status);
     }
 
     @Override

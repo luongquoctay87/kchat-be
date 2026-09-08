@@ -40,6 +40,7 @@ public interface RoomMemberRepository extends JpaRepository<RoomMember, UUID> {
 
     @Query("""
             SELECT m FROM RoomMember m
+            JOIN FETCH m.user
             WHERE m.room.id = :roomId AND m.leftAt IS NULL AND m.user.id <> :excludeUserId
             """)
     List<RoomMember> findOtherActiveMembers(
@@ -124,4 +125,12 @@ public interface RoomMemberRepository extends JpaRepository<RoomMember, UUID> {
               AND m2.leftAt IS NULL
             """)
     List<UUID> findPeerUserIds(@Param("userId") UUID userId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE RoomMember m
+            SET m.unreadCount = 0, m.lastReadMessageId = null
+            WHERE m.room.id IN :roomIds
+            """)
+    int resetUnreadAndLastReadForRooms(@Param("roomIds") Collection<UUID> roomIds);
 }

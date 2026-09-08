@@ -13,12 +13,15 @@ import com.kchat.entity.ChatMessage;
 import com.kchat.entity.ChatRoom;
 import com.kchat.entity.RoomMember;
 import com.kchat.entity.User;
+import com.kchat.entity.UserDevice;
 import com.kchat.repository.CallParticipantRepository;
 import com.kchat.repository.CallSessionRepository;
 import com.kchat.repository.ChatMessageRepository;
 import com.kchat.repository.RoomMemberRepository;
+import com.kchat.repository.UserDeviceRepository;
 import com.kchat.repository.UserRepository;
 import com.kchat.service.CallService;
+import com.kchat.service.FcmPushService;
 import com.kchat.service.mapper.ChatMapper;
 import com.kchat.ws.CallEventPublisher;
 import com.kchat.ws.MessageEventPublisher;
@@ -28,6 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +42,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Service
 @Transactional
 public class CallServiceImpl implements CallService {
+
+    private static final Logger log = LoggerFactory.getLogger(CallServiceImpl.class);
 
     static final Duration RING_TIMEOUT = Duration.ofSeconds(45);
     /** Abandoned active calls (app killed / media failed without hangup). */
@@ -50,6 +57,8 @@ public class CallServiceImpl implements CallService {
     private final ChatMessageRepository chatMessageRepository;
     private final CallEventPublisher callEventPublisher;
     private final MessageEventPublisher messageEventPublisher;
+    private final UserDeviceRepository userDeviceRepository;
+    private final FcmPushService fcmPushService;
 
     public CallServiceImpl(
             CallSessionRepository callSessionRepository,
@@ -58,7 +67,9 @@ public class CallServiceImpl implements CallService {
             UserRepository userRepository,
             ChatMessageRepository chatMessageRepository,
             CallEventPublisher callEventPublisher,
-            MessageEventPublisher messageEventPublisher
+            MessageEventPublisher messageEventPublisher,
+            UserDeviceRepository userDeviceRepository,
+            FcmPushService fcmPushService
     ) {
         this.callSessionRepository = callSessionRepository;
         this.callParticipantRepository = callParticipantRepository;
@@ -67,6 +78,8 @@ public class CallServiceImpl implements CallService {
         this.chatMessageRepository = chatMessageRepository;
         this.callEventPublisher = callEventPublisher;
         this.messageEventPublisher = messageEventPublisher;
+        this.userDeviceRepository = userDeviceRepository;
+        this.fcmPushService = fcmPushService;
     }
 
     @Override
@@ -77,6 +90,8 @@ public class CallServiceImpl implements CallService {
         if (room.getType() != RoomType.direct) {
             throw ApiException.badRequest("validation_error", "Calls are only supported in 1-1 chats");
         }
+
+        restoreLeftDirectMemberships(roomId);
 
         // Clear leftover live calls so a new dial works after force-stop / failed media
         // left status=active|ringing (including orphaned room rows without participants).
@@ -118,7 +133,12 @@ public class CallServiceImpl implements CallService {
         saveParticipant(call.getId(), calleeId, null);
 
         CallDto dto = toDto(call, callee);
-        afterCommit(() -> callEventPublisher.callIncoming(dto, List.of(calleeId)));
+        log.info("Call initiated: callId={} caller={} callee={} room={} type={}",
+                call.getId(), userId, calleeId, roomId, callType);
+        afterCommit(() -> {
+            callEventPublisher.callIncoming(dto, List.of(calleeId));
+            sendCallIncomingPush(call, calleeId);
+        });
         return dto;
     }
 
@@ -140,6 +160,7 @@ public class CallServiceImpl implements CallService {
         participant.setJoinedAt(now);
         callParticipantRepository.save(participant);
 
+        log.info("Call accepted: callId={} user={}", callId, userId);
         CallSession fresh = requireParticipantCall(callId, userId);
         CallDto dto = toDto(fresh, resolveCallee(fresh));
         // Notify all participants (including actor) so other devices leave ringing UI.
@@ -163,11 +184,15 @@ public class CallServiceImpl implements CallService {
         }
         markLeft(callId, userId, now);
 
+        log.info("Call declined: callId={} user={}", callId, userId);
         CallSession fresh = requireParticipantCall(callId, userId);
         CallDto dto = toDto(fresh, resolveCallee(fresh));
         List<UUID> recipients = new ArrayList<>(
                 callParticipantRepository.findUserIdsByCallId(callId));
-        afterCommit(() -> callEventPublisher.callRejected(dto, recipients));
+        afterCommit(() -> {
+            callEventPublisher.callRejected(dto, recipients);
+            sendCallEndedPush(callId, fresh.getInitiator().getId(), "declined");
+        });
         postCallEventMessage(fresh, "Cuộc gọi bị từ chối");
         return dto;
     }
@@ -204,43 +229,54 @@ public class CallServiceImpl implements CallService {
             markLeft(callId, participantId, now);
         }
 
+        log.info("Call ended: callId={} user={} endedFrom={} next={}", callId, userId, endedFrom, next);
         CallSession fresh = requireParticipantCall(callId, userId);
         CallDto dto = toDto(fresh, resolveCallee(fresh));
         List<UUID> recipients = new ArrayList<>(
                 callParticipantRepository.findUserIdsByCallId(callId));
+        afterCommit(() -> {
+            callEventPublisher.callEnded(dto, recipients);
+            for (UUID recipient : recipients) {
+                if (!recipient.equals(userId)) {
+                    sendCallEndedPush(callId, recipient, "ended");
+                }
+            }
+        });
         if (endedFrom == CallStatus.ringing && next == CallStatus.declined) {
-            afterCommit(() -> callEventPublisher.callRejected(dto, recipients));
             postCallEventMessage(fresh, "Cuộc gọi bị từ chối");
         } else if (endedFrom == CallStatus.ringing) {
-            afterCommit(() -> callEventPublisher.callEnded(dto, recipients));
             postCallEventMessage(fresh, "Cuộc gọi nhỡ");
         } else {
-            afterCommit(() -> callEventPublisher.callEnded(dto, recipients));
             postCallEventMessage(fresh, formatEndedSummary(fresh));
         }
         return dto;
     }
 
     @Override
+    @Transactional(readOnly = true)
     public void relayIceOffer(UUID userId, UUID callId, String sdp) {
         CallSession call = requireActiveOrRinging(callId, userId);
         requireSdp(sdp);
         String roomId = call.getRoom().getId().toString();
         List<UUID> others = otherParticipants(callId, userId);
+        log.info("Relaying ICE offer for call {} from user {} to {} recipient(s)", callId, userId, others.size());
         // Publish immediately — ICE is latency-sensitive and does not mutate call state.
         callEventPublisher.iceOffer(callId.toString(), roomId, userId, sdp, others);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public void relayIceAnswer(UUID userId, UUID callId, String sdp) {
         CallSession call = requireActiveOrRinging(callId, userId);
         requireSdp(sdp);
         String roomId = call.getRoom().getId().toString();
         List<UUID> others = otherParticipants(callId, userId);
+        log.info("Relaying ICE answer for call {} from user {} to {} recipient(s)", callId, userId, others.size());
         callEventPublisher.iceAnswer(callId.toString(), roomId, userId, sdp, others);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public void relayIceCandidate(
             UUID userId,
             UUID callId,
@@ -254,6 +290,7 @@ public class CallServiceImpl implements CallService {
         }
         String roomId = call.getRoom().getId().toString();
         List<UUID> others = otherParticipants(callId, userId);
+        log.info("Relaying ICE candidate for call {} from user {} to {} recipient(s)", callId, userId, others.size());
         callEventPublisher.iceCandidate(
                 callId.toString(), roomId, userId, candidate, sdpMid, sdpMLineIndex, others);
     }
@@ -278,10 +315,17 @@ public class CallServiceImpl implements CallService {
             if (fresh == null) {
                 continue;
             }
+            log.info("Call ringing expired: callId={}", fresh.getId());
             CallDto dto = toDto(fresh, resolveCallee(fresh));
             List<UUID> recipients = new ArrayList<>(
                     callParticipantRepository.findUserIdsByCallId(fresh.getId()));
-            afterCommit(() -> callEventPublisher.callEnded(dto, recipients));
+            UUID calleeId = resolveCallee(fresh) != null ? resolveCallee(fresh).getId() : null;
+            afterCommit(() -> {
+                callEventPublisher.callEnded(dto, recipients);
+                if (calleeId != null) {
+                    sendCallEndedPush(fresh.getId(), calleeId, "missed");
+                }
+            });
             postCallEventMessage(fresh, "Cuộc gọi nhỡ");
             count++;
         }
@@ -305,6 +349,17 @@ public class CallServiceImpl implements CallService {
                 .filter(call -> !call.getInitiator().getId().equals(userId))
                 .map(call -> toDto(call, resolveCallee(call)))
                 .toList();
+    }
+
+    private void restoreLeftDirectMemberships(UUID roomId) {
+        List<RoomMember> left = roomMemberRepository.findLeftMembers(roomId);
+        if (left.isEmpty()) {
+            return;
+        }
+        for (RoomMember m : left) {
+            m.setLeftAt(null);
+            roomMemberRepository.save(m);
+        }
     }
 
     /** End every live call this user still participates in. */
@@ -344,21 +399,26 @@ public class CallServiceImpl implements CallService {
     }
 
     private void postCallEventMessage(CallSession call, String text) {
+        CallSession session = callSessionRepository.findByIdWithRoomAndInitiator(call.getId())
+                .orElse(call);
+        User initiator = session.getInitiator();
         ChatMessage message = new ChatMessage();
-        message.setRoom(call.getRoom());
-        message.setSender(null);
+        message.setRoom(session.getRoom());
+        message.setSender(initiator);
         message.setType(MessageType.call_event);
         message.setContent(text);
         chatMessageRepository.saveAndFlush(message);
 
         ChatMessage saved = chatMessageRepository.findActiveById(message.getId()).orElse(message);
-        UUID anyMember = roomMemberRepository.findActiveMemberUserIds(call.getRoom().getId()).stream()
+        List<UUID> memberIds = roomMemberRepository.findActiveMemberUserIds(session.getRoom().getId());
+        UUID initiatorId = initiator.getId();
+        UUID dtoViewer = memberIds.stream()
+                .filter(id -> !id.equals(initiatorId))
                 .findFirst()
-                .orElse(call.getInitiator().getId());
-        MessageDto dto = ChatMapper.toMessageDto(saved, anyMember, null, true);
-        List<UUID> memberIds = roomMemberRepository.findActiveMemberUserIds(call.getRoom().getId());
-        UUID roomId = call.getRoom().getId();
-        afterCommit(() -> messageEventPublisher.messageCreated(roomId, null, memberIds, dto));
+                .orElse(initiatorId);
+        MessageDto dto = ChatMapper.toMessageDto(saved, dtoViewer, null, true);
+        UUID roomId = session.getRoom().getId();
+        afterCommit(() -> messageEventPublisher.messageCreated(roomId, initiatorId, memberIds, dto));
     }
 
     private void afterCommit(Runnable action) {
@@ -475,5 +535,46 @@ public class CallServiceImpl implements CallService {
 
     private static String formatInstant(Instant instant) {
         return instant == null ? null : instant.toString();
+    }
+
+    private void sendCallIncomingPush(CallSession call, UUID calleeId) {
+        try {
+            if (!fcmPushService.isEnabled()) {
+                return;
+            }
+            List<UserDevice> devices = userDeviceRepository.findByUser_IdOrderByLastActiveAtDesc(calleeId);
+            String callerName = call.getInitiator().getDisplayName();
+            String callerId = call.getInitiator().getId().toString();
+            String callId = call.getId().toString();
+            String roomId = call.getRoom().getId().toString();
+            String callType = call.getCallType().name();
+            for (UserDevice device : devices) {
+                String token = device.getFcmToken();
+                if (token == null || token.isBlank() || token.startsWith("dev:")) {
+                    continue;
+                }
+                fcmPushService.sendCallIncoming(token, callId, roomId, callerName, callerId, callType);
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to send call incoming push for call {}", call.getId(), ex);
+        }
+    }
+
+    private void sendCallEndedPush(UUID callId, UUID targetUserId, String reason) {
+        try {
+            if (!fcmPushService.isEnabled() || targetUserId == null) {
+                return;
+            }
+            List<UserDevice> devices = userDeviceRepository.findByUser_IdOrderByLastActiveAtDesc(targetUserId);
+            for (UserDevice device : devices) {
+                String token = device.getFcmToken();
+                if (token == null || token.isBlank() || token.startsWith("dev:")) {
+                    continue;
+                }
+                fcmPushService.sendCallEnded(token, callId.toString(), reason);
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to send call ended push for call {}", callId, ex);
+        }
     }
 }

@@ -6,6 +6,7 @@ import com.kchat.common.util.ChannelRules;
 import com.kchat.entity.ChatRoom;
 import com.kchat.entity.DirectRoomPair;
 import com.kchat.entity.RoomMember;
+import com.kchat.entity.User;
 import com.kchat.entity.UserDevice;
 import com.kchat.entity.UserSettings;
 import com.kchat.repository.ChatRoomRepository;
@@ -54,7 +55,11 @@ public class MessagePushDeliveryService {
 
     @Transactional(readOnly = true)
     public void deliver(UUID roomId, UUID senderId, List<UUID> memberIds, MessageDto message) {
-        if (!fcmPushService.isEnabled() || memberIds == null || memberIds.isEmpty()) {
+        if (!fcmPushService.isEnabled()) {
+            log.debug("FCM push is disabled globally, skipping deliver for room {}", roomId);
+            return;
+        }
+        if (memberIds == null || memberIds.isEmpty()) {
             return;
         }
         try {
@@ -82,15 +87,19 @@ public class MessagePushDeliveryService {
                 }
                 UserSettings settings = userSettingsRepository.findById(memberId).orElse(null);
                 if (!pushDeliveryPolicy.shouldSendRoomMessagePush(settings, membership, now, memberId)) {
+                    log.info("Push skipped for member {}: pushEnabled={}, quietHours/mute active",
+                            memberId, settings != null && settings.isPushEnabled());
                     continue;
                 }
                 String title = resolveTitle(room, pair, memberId);
                 List<UserDevice> devices = userDeviceRepository.findByUser_IdOrderByLastActiveAtDesc(memberId);
+                int sentCount = 0;
                 for (UserDevice device : devices) {
                     String token = device.getFcmToken();
                     if (token == null || token.isBlank() || token.startsWith("dev:")) {
                         continue;
                     }
+                    sentCount++;
                     fcmPushService.sendRoomMessage(
                             token,
                             roomId.toString(),
@@ -101,6 +110,9 @@ public class MessagePushDeliveryService {
                             message == null ? null : message.createdAt(),
                             message == null ? null : message.type()
                     );
+                }
+                if (sentCount == 0) {
+                    log.info("No valid FCM push tokens for recipient {} (total devices: {})", memberId, devices.size());
                 }
             }
         } catch (Exception ex) {
@@ -138,16 +150,16 @@ public class MessagePushDeliveryService {
         };
     }
 
-    private static String resolveTitle(ChatRoom room, DirectRoomPair pair, UUID userId) {
+    private String resolveTitle(ChatRoom room, DirectRoomPair pair, UUID userId) {
         if (room.getType() == RoomType.direct) {
-            if (pair == null) {
-                return "Direct";
+            if (pair != null) {
+                try {
+                    return displayName(pair.otherUser(userId));
+                } catch (RuntimeException ignored) {
+                    // fall through
+                }
             }
-            try {
-                return pair.otherUser(userId).getDisplayName();
-            } catch (RuntimeException ex) {
-                return "Direct";
-            }
+            return fallbackPeerTitle(room.getId(), userId);
         }
         if (room.getType() == RoomType.channel) {
             return ChannelRules.displayTitle(room.getName(), room.getSlug());
@@ -158,7 +170,30 @@ public class MessagePushDeliveryService {
         if (room.getSlug() != null && !room.getSlug().isBlank()) {
             return room.getSlug();
         }
-        return "Chat";
+        return fallbackPeerTitle(room.getId(), userId);
+    }
+
+    private String fallbackPeerTitle(UUID roomId, UUID userId) {
+        List<User> others = roomMemberRepository.findOtherActiveMembers(roomId, userId).stream()
+                .map(RoomMember::getUser)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        if (others.isEmpty()) {
+            return "Chat";
+        }
+        List<User> shown = others.size() > 3 ? others.subList(0, 3) : others;
+        return shown.stream().map(MessagePushDeliveryService::displayName).collect(java.util.stream.Collectors.joining(", "));
+    }
+
+    private static String displayName(User user) {
+        if (user == null) {
+            return "Thành viên";
+        }
+        String name = user.getDisplayName();
+        if (name == null || name.isBlank()) {
+            return user.loginName() != null ? user.loginName() : "Thành viên";
+        }
+        return name.trim();
     }
 
     private static String truncate(String value, int max) {

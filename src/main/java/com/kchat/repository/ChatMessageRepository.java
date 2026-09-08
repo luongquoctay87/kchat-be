@@ -101,6 +101,15 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
             """, nativeQuery = true)
     List<SenderMessageRow> findActiveIdsBySenderId(@Param("senderId") UUID senderId, @Param("limit") int limit);
 
+    @Query(value = """
+            SELECT m.id AS id, m.room_id AS room_id
+            FROM messages m
+            WHERE m.room_id IN (:roomIds) AND m.deleted_at IS NULL
+            ORDER BY m.created_at
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<SenderMessageRow> findActiveIdsByRoomIdIn(@Param("roomIds") Collection<UUID> roomIds, @Param("limit") int limit);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE ChatMessage m SET m.deletedAt = :deletedAt WHERE m.id IN :ids AND m.deletedAt IS NULL")
     int softDeleteByIdIn(@Param("ids") Collection<UUID> ids, @Param("deletedAt") Instant deletedAt);
