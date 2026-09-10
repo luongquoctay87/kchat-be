@@ -16,143 +16,142 @@ import java.util.UUID;
 @Table(name = "users")
 public class User {
 
-    @Id
-    private UUID id;
+  @Id private UUID id;
 
-    @Column(length = 64, unique = true)
-    private String username;
+  @Column(length = 64, unique = true)
+  private String username;
 
-    @Column(length = 255, unique = true)
-    private String email;
+  @Column(length = 255, unique = true)
+  private String email;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
+  @Column(name = "password_hash", nullable = false)
+  private String passwordHash;
 
-    @Column(name = "display_name", nullable = false, length = 128)
-    private String displayName;
+  @Column(name = "display_name", nullable = false, length = 128)
+  private String displayName;
 
-    @Column(length = 32)
-    private String phone;
+  @Column(length = 32)
+  private String phone;
 
-    @Column(name = "avatar_url", length = 512)
-    private String avatarUrl;
+  @Column(name = "avatar_url", length = 512)
+  private String avatarUrl;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private UserStatus status = UserStatus.active;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 20)
+  private UserStatus status = UserStatus.active;
 
-    @Column(name = "last_seen_at")
-    private Instant lastSeenAt;
+  @Column(name = "last_seen_at")
+  private Instant lastSeenAt;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
-    @PrePersist
-    void onCreate() {
-        Instant now = Instant.now();
-        if (id == null) {
-            id = UUID.randomUUID();
-        }
-        if (status == null) {
-            status = UserStatus.active;
-        }
-        createdAt = now;
-        updatedAt = now;
+  @PrePersist
+  void onCreate() {
+    Instant now = Instant.now();
+    if (id == null) {
+      id = UUID.randomUUID();
     }
-
-    @PreUpdate
-    void onUpdate() {
-        updatedAt = Instant.now();
+    if (status == null) {
+      status = UserStatus.active;
     }
+    createdAt = now;
+    updatedAt = now;
+  }
 
-    public UUID getId() {
-        return id;
-    }
+  @PreUpdate
+  void onUpdate() {
+    updatedAt = Instant.now();
+  }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public String getUsername() {
-        return username;
-    }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
+  public String getUsername() {
+    return username;
+  }
 
-    public String getEmail() {
-        return email;
-    }
+  public void setUsername(String username) {
+    this.username = username;
+  }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+  public String getEmail() {
+    return email;
+  }
 
-    public String getPasswordHash() {
-        return passwordHash;
-    }
+  public void setEmail(String email) {
+    this.email = email;
+  }
 
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
-    }
+  public String getPasswordHash() {
+    return passwordHash;
+  }
 
-    public String getDisplayName() {
-        return displayName;
-    }
+  public void setPasswordHash(String passwordHash) {
+    this.passwordHash = passwordHash;
+  }
 
-    public void setDisplayName(String displayName) {
-        this.displayName = displayName;
-    }
+  public String getDisplayName() {
+    return displayName;
+  }
 
-    public String getPhone() {
-        return phone;
-    }
+  public void setDisplayName(String displayName) {
+    this.displayName = displayName;
+  }
 
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
+  public String getPhone() {
+    return phone;
+  }
 
-    public String getAvatarUrl() {
-        return avatarUrl;
-    }
+  public void setPhone(String phone) {
+    this.phone = phone;
+  }
 
-    public void setAvatarUrl(String avatarUrl) {
-        this.avatarUrl = avatarUrl;
-    }
+  public String getAvatarUrl() {
+    return avatarUrl;
+  }
 
-    public UserStatus getStatus() {
-        return status;
-    }
+  public void setAvatarUrl(String avatarUrl) {
+    this.avatarUrl = avatarUrl;
+  }
 
-    public void setStatus(UserStatus status) {
-        this.status = status;
-    }
+  public UserStatus getStatus() {
+    return status;
+  }
 
-    public Instant getLastSeenAt() {
-        return lastSeenAt;
-    }
+  public void setStatus(UserStatus status) {
+    this.status = status;
+  }
 
-    public void setLastSeenAt(Instant lastSeenAt) {
-        this.lastSeenAt = lastSeenAt;
-    }
+  public Instant getLastSeenAt() {
+    return lastSeenAt;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public void setLastSeenAt(Instant lastSeenAt) {
+    this.lastSeenAt = lastSeenAt;
+  }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 
-    public boolean isActive() {
-        return status == UserStatus.active;
-    }
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
 
-    public String loginName() {
-        return username != null ? username : email;
-    }
+  public boolean isActive() {
+    return status == UserStatus.active;
+  }
+
+  public String loginName() {
+    return username != null ? username : email;
+  }
 }

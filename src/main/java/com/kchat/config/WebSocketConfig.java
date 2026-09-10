@@ -13,30 +13,29 @@ import org.springframework.web.socket.server.standard.ServletServerContainerFact
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
 
-    private final ChatWebSocketHandler chatWebSocketHandler;
-    private final JwtHandshakeInterceptor jwtHandshakeInterceptor;
+  private final ChatWebSocketHandler chatWebSocketHandler;
+  private final JwtHandshakeInterceptor jwtHandshakeInterceptor;
 
-    public WebSocketConfig(
-            ChatWebSocketHandler chatWebSocketHandler,
-            JwtHandshakeInterceptor jwtHandshakeInterceptor
-    ) {
-        this.chatWebSocketHandler = chatWebSocketHandler;
-        this.jwtHandshakeInterceptor = jwtHandshakeInterceptor;
-    }
+  public WebSocketConfig(
+      ChatWebSocketHandler chatWebSocketHandler, JwtHandshakeInterceptor jwtHandshakeInterceptor) {
+    this.chatWebSocketHandler = chatWebSocketHandler;
+    this.jwtHandshakeInterceptor = jwtHandshakeInterceptor;
+  }
 
-    @Override
-    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(chatWebSocketHandler, "/ws")
-                .addInterceptors(jwtHandshakeInterceptor)
-                .setAllowedOrigins("*");
-    }
+  @Override
+  public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+    registry
+        .addHandler(chatWebSocketHandler, "/ws")
+        .addInterceptors(jwtHandshakeInterceptor)
+        .setAllowedOrigins("*");
+  }
 
-    @Bean
-    ServletServerContainerFactoryBean webSocketContainer() {
-        ServletServerContainerFactoryBean container = new ServletServerContainerFactoryBean();
-        container.setMaxTextMessageBufferSize(256 * 1024);
-        container.setMaxBinaryMessageBufferSize(256 * 1024);
-        container.setMaxSessionIdleTimeout(30 * 60_000L);
-        return container;
-    }
+  @Bean
+  ServletServerContainerFactoryBean webSocketContainer() {
+    ServletServerContainerFactoryBean container = new ServletServerContainerFactoryBean();
+    container.setMaxTextMessageBufferSize(256 * 1024);
+    container.setMaxBinaryMessageBufferSize(256 * 1024);
+    container.setMaxSessionIdleTimeout(30 * 60_000L);
+    return container;
+  }
 }

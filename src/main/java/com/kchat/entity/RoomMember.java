@@ -15,114 +15,113 @@ import java.util.UUID;
 @Table(name = "room_members")
 public class RoomMember {
 
-    @Id
-    private UUID id;
+  @Id private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "room_id", nullable = false)
-    private ChatRoom room;
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "room_id", nullable = false)
+  private ChatRoom room;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "user_id", nullable = false)
+  private User user;
 
-    @Column(nullable = false, length = 20)
-    private String role = "member";
+  @Column(nullable = false, length = 20)
+  private String role = "member";
 
-    @Column(name = "joined_at", nullable = false)
-    private Instant joinedAt;
+  @Column(name = "joined_at", nullable = false)
+  private Instant joinedAt;
 
-    @Column(name = "left_at")
-    private Instant leftAt;
+  @Column(name = "left_at")
+  private Instant leftAt;
 
-    @Column(name = "last_read_message_id")
-    private UUID lastReadMessageId;
+  @Column(name = "last_read_message_id")
+  private UUID lastReadMessageId;
 
-    @Column(name = "muted_until")
-    private Instant mutedUntil;
+  @Column(name = "muted_until")
+  private Instant mutedUntil;
 
-    @Column(name = "unread_count", nullable = false)
-    private int unreadCount;
+  @Column(name = "unread_count", nullable = false)
+  private int unreadCount;
 
-    @PrePersist
-    void onCreate() {
-        if (id == null) {
-            id = UUID.randomUUID();
-        }
-        if (joinedAt == null) {
-            joinedAt = Instant.now();
-        }
+  @PrePersist
+  void onCreate() {
+    if (id == null) {
+      id = UUID.randomUUID();
     }
-
-    public UUID getId() {
-        return id;
+    if (joinedAt == null) {
+      joinedAt = Instant.now();
     }
+  }
 
-    public ChatRoom getRoom() {
-        return room;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public void setRoom(ChatRoom room) {
-        this.room = room;
-    }
+  public ChatRoom getRoom() {
+    return room;
+  }
 
-    public User getUser() {
-        return user;
-    }
+  public void setRoom(ChatRoom room) {
+    this.room = room;
+  }
 
-    public void setUser(User user) {
-        this.user = user;
-    }
+  public User getUser() {
+    return user;
+  }
 
-    public String getRole() {
-        return role;
-    }
+  public void setUser(User user) {
+    this.user = user;
+  }
 
-    public void setRole(String role) {
-        this.role = role;
-    }
+  public String getRole() {
+    return role;
+  }
 
-    public Instant getJoinedAt() {
-        return joinedAt;
-    }
+  public void setRole(String role) {
+    this.role = role;
+  }
 
-    public void setJoinedAt(Instant joinedAt) {
-        this.joinedAt = joinedAt;
-    }
+  public Instant getJoinedAt() {
+    return joinedAt;
+  }
 
-    public Instant getLeftAt() {
-        return leftAt;
-    }
+  public void setJoinedAt(Instant joinedAt) {
+    this.joinedAt = joinedAt;
+  }
 
-    public void setLeftAt(Instant leftAt) {
-        this.leftAt = leftAt;
-    }
+  public Instant getLeftAt() {
+    return leftAt;
+  }
 
-    public UUID getLastReadMessageId() {
-        return lastReadMessageId;
-    }
+  public void setLeftAt(Instant leftAt) {
+    this.leftAt = leftAt;
+  }
 
-    public void setLastReadMessageId(UUID lastReadMessageId) {
-        this.lastReadMessageId = lastReadMessageId;
-    }
+  public UUID getLastReadMessageId() {
+    return lastReadMessageId;
+  }
 
-    public int getUnreadCount() {
-        return unreadCount;
-    }
+  public void setLastReadMessageId(UUID lastReadMessageId) {
+    this.lastReadMessageId = lastReadMessageId;
+  }
 
-    public void setUnreadCount(int unreadCount) {
-        this.unreadCount = unreadCount;
-    }
+  public int getUnreadCount() {
+    return unreadCount;
+  }
 
-    public Instant getMutedUntil() {
-        return mutedUntil;
-    }
+  public void setUnreadCount(int unreadCount) {
+    this.unreadCount = unreadCount;
+  }
 
-    public void setMutedUntil(Instant mutedUntil) {
-        this.mutedUntil = mutedUntil;
-    }
+  public Instant getMutedUntil() {
+    return mutedUntil;
+  }
 
-    public void incrementUnread() {
-        this.unreadCount = this.unreadCount + 1;
-    }
+  public void setMutedUntil(Instant mutedUntil) {
+    this.mutedUntil = mutedUntil;
+  }
+
+  public void incrementUnread() {
+    this.unreadCount = this.unreadCount + 1;
+  }
 }

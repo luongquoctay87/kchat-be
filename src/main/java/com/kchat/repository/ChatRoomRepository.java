@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, UUID> {
 
-    Optional<ChatRoom> findBySlug(String slug);
+  Optional<ChatRoom> findBySlug(String slug);
 
-    List<ChatRoom> findByTypeAndArchivedFalse(RoomType type);
+  List<ChatRoom> findByTypeAndArchivedFalse(RoomType type);
 }

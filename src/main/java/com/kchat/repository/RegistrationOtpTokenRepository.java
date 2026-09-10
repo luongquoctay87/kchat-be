@@ -11,18 +11,18 @@ import org.springframework.data.repository.query.Param;
 
 public interface RegistrationOtpTokenRepository extends JpaRepository<RegistrationOtpToken, UUID> {
 
-    Optional<RegistrationOtpToken> findFirstByEmailIgnoreCaseAndUsedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(
-            String email,
-            Instant expiresAfter
-    );
+  Optional<RegistrationOtpToken>
+      findFirstByEmailIgnoreCaseAndUsedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(
+          String email, Instant expiresAfter);
 
-    Optional<RegistrationOtpToken> findByRegistrationTokenHash(String registrationTokenHash);
+  Optional<RegistrationOtpToken> findByRegistrationTokenHash(String registrationTokenHash);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("""
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      """
             UPDATE RegistrationOtpToken t
             SET t.usedAt = CURRENT_TIMESTAMP
             WHERE LOWER(t.email) = LOWER(:email) AND t.usedAt IS NULL
             """)
-    void markAllUsedForEmail(@Param("email") String email);
+  void markAllUsedForEmail(@Param("email") String email);
 }

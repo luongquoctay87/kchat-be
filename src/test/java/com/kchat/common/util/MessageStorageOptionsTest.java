@@ -7,12 +7,12 @@ import org.junit.jupiter.api.Test;
 
 class MessageStorageOptionsTest {
 
-    @Test
-    void acceptsKnownDisappearingDurations() {
-        assertTrue(MessageStorageOptions.isValidDefaultDisappearing(0));
-        assertTrue(MessageStorageOptions.isValidDefaultDisappearing(86_400));
-        assertTrue(MessageStorageOptions.isValidDefaultDisappearing(604_800));
-        assertFalse(MessageStorageOptions.isValidDefaultDisappearing(123));
-        assertFalse(MessageStorageOptions.isValidDefaultDisappearing(null));
-    }
+  @Test
+  void acceptsKnownDisappearingDurations() {
+    assertTrue(MessageStorageOptions.isValidDefaultDisappearing(0));
+    assertTrue(MessageStorageOptions.isValidDefaultDisappearing(86_400));
+    assertTrue(MessageStorageOptions.isValidDefaultDisappearing(604_800));
+    assertFalse(MessageStorageOptions.isValidDefaultDisappearing(123));
+    assertFalse(MessageStorageOptions.isValidDefaultDisappearing(null));
+  }
 }

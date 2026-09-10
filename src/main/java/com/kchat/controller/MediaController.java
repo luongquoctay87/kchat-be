@@ -19,22 +19,22 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/media")
 public class MediaController {
 
-    private final ChatService chatService;
-    private final MediaStorage mediaStorage;
+  private final ChatService chatService;
+  private final MediaStorage mediaStorage;
 
-    public MediaController(ChatService chatService, MediaStorage mediaStorage) {
-        this.chatService = chatService;
-        this.mediaStorage = mediaStorage;
-    }
+  public MediaController(ChatService chatService, MediaStorage mediaStorage) {
+    this.chatService = chatService;
+    this.mediaStorage = mediaStorage;
+  }
 
-    @GetMapping("/{attachmentId}")
-    public ResponseEntity<Resource> download(@PathVariable UUID attachmentId) {
-        MessageAttachment attachment = chatService.requireAttachmentForUser(
-                SecurityUtils.requireUserId(), attachmentId);
-        try {
-            return MediaHttp.inline(mediaStorage.open(attachment.getS3Key()));
-        } catch (IllegalArgumentException | IOException ex) {
-            throw ApiException.notFound("Attachment file missing");
-        }
+  @GetMapping("/{attachmentId}")
+  public ResponseEntity<Resource> download(@PathVariable UUID attachmentId) {
+    MessageAttachment attachment =
+        chatService.requireAttachmentForUser(SecurityUtils.requireUserId(), attachmentId);
+    try {
+      return MediaHttp.inline(mediaStorage.open(attachment.getS3Key()));
+    } catch (IllegalArgumentException | IOException ex) {
+      throw ApiException.notFound("Attachment file missing");
     }
+  }
 }

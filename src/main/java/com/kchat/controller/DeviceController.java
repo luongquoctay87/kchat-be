@@ -23,33 +23,31 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/devices")
 public class DeviceController {
 
-    private final ChatService chatService;
-    private final UserService userService;
+  private final ChatService chatService;
+  private final UserService userService;
 
-    public DeviceController(ChatService chatService, UserService userService) {
-        this.chatService = chatService;
-        this.userService = userService;
-    }
+  public DeviceController(ChatService chatService, UserService userService) {
+    this.chatService = chatService;
+    this.userService = userService;
+  }
 
-    @GetMapping
-    public List<DeviceDto> listDevices(
-            @RequestHeader(value = "X-Device-Token", required = false) String deviceToken
-    ) {
-        return userService.listDevices(SecurityUtils.requireUserId(), deviceToken);
-    }
+  @GetMapping
+  public List<DeviceDto> listDevices(
+      @RequestHeader(value = "X-Device-Token", required = false) String deviceToken) {
+    return userService.listDevices(SecurityUtils.requireUserId(), deviceToken);
+  }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void registerDevice(@Valid @RequestBody RegisterDeviceRequest request) {
-        chatService.registerDevice(SecurityUtils.requireUserId(), request);
-    }
+  @PostMapping
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void registerDevice(@Valid @RequestBody RegisterDeviceRequest request) {
+    chatService.registerDevice(SecurityUtils.requireUserId(), request);
+  }
 
-    @DeleteMapping("/{deviceId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void revokeDevice(
-            @PathVariable UUID deviceId,
-            @RequestHeader(value = "X-Device-Token", required = false) String deviceToken
-    ) {
-        userService.revokeDevice(SecurityUtils.requireUserId(), deviceId, deviceToken);
-    }
+  @DeleteMapping("/{deviceId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void revokeDevice(
+      @PathVariable UUID deviceId,
+      @RequestHeader(value = "X-Device-Token", required = false) String deviceToken) {
+    userService.revokeDevice(SecurityUtils.requireUserId(), deviceId, deviceToken);
+  }
 }

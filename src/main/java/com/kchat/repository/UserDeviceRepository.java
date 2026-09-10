@@ -8,13 +8,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserDeviceRepository extends JpaRepository<UserDevice, UUID> {
 
-    Optional<UserDevice> findByFcmToken(String fcmToken);
+  Optional<UserDevice> findByFcmToken(String fcmToken);
 
-    List<UserDevice> findByUser_IdOrderByLastActiveAtDesc(UUID userId);
+  List<UserDevice> findByUser_IdOrderByLastActiveAtDesc(UUID userId);
 
-    void deleteByFcmToken(String fcmToken);
+  void deleteByFcmToken(String fcmToken);
 
-    void deleteByUser_IdAndFcmTokenStartingWith(UUID userId, String prefix);
+  void deleteByUser_IdAndFcmTokenStartingWith(UUID userId, String prefix);
 
-    boolean existsByUser_IdAndFcmToken(UUID userId, String fcmToken);
+  boolean existsByUser_IdAndFcmToken(UUID userId, String fcmToken);
 }

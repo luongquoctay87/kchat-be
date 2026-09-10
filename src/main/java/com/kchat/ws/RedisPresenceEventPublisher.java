@@ -15,31 +15,31 @@ import org.springframework.stereotype.Component;
 @Component
 public class RedisPresenceEventPublisher implements PresenceEventPublisher {
 
-    private static final Logger log = LoggerFactory.getLogger(RedisPresenceEventPublisher.class);
+  private static final Logger log = LoggerFactory.getLogger(RedisPresenceEventPublisher.class);
 
-    private final StringRedisTemplate redis;
-    private final ObjectMapper objectMapper;
-    private final RoomMemberRepository roomMemberRepository;
+  private final StringRedisTemplate redis;
+  private final ObjectMapper objectMapper;
+  private final RoomMemberRepository roomMemberRepository;
 
-    public RedisPresenceEventPublisher(
-            StringRedisTemplate redis,
-            ObjectMapper objectMapper,
-            RoomMemberRepository roomMemberRepository
-    ) {
-        this.redis = redis;
-        this.objectMapper = objectMapper;
-        this.roomMemberRepository = roomMemberRepository;
+  public RedisPresenceEventPublisher(
+      StringRedisTemplate redis,
+      ObjectMapper objectMapper,
+      RoomMemberRepository roomMemberRepository) {
+    this.redis = redis;
+    this.objectMapper = objectMapper;
+    this.roomMemberRepository = roomMemberRepository;
+  }
+
+  @Override
+  public void presenceChanged(UUID userId, boolean online) {
+    try {
+      List<UUID> recipients = roomMemberRepository.findPeerUserIds(userId);
+      WsEnvelope envelope =
+          WsEnvelope.presence(
+              new WsEnvelope.PresencePayload(userId.toString(), online, recipients));
+      redis.convertAndSend(RedisChannels.PRESENCE, objectMapper.writeValueAsString(envelope));
+    } catch (JsonProcessingException ex) {
+      log.warn("Failed to publish presence for {}: {}", userId, ex.getMessage());
     }
-
-    @Override
-    public void presenceChanged(UUID userId, boolean online) {
-        try {
-            List<UUID> recipients = roomMemberRepository.findPeerUserIds(userId);
-            WsEnvelope envelope = WsEnvelope.presence(
-                    new WsEnvelope.PresencePayload(userId.toString(), online, recipients));
-            redis.convertAndSend(RedisChannels.PRESENCE, objectMapper.writeValueAsString(envelope));
-        } catch (JsonProcessingException ex) {
-            log.warn("Failed to publish presence for {}: {}", userId, ex.getMessage());
-        }
-    }
+  }
 }

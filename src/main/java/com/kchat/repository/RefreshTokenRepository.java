@@ -10,28 +10,32 @@ import org.springframework.data.repository.query.Param;
 
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID> {
 
-    @Query("""
+  @Query(
+      """
             SELECT t FROM RefreshToken t
             JOIN FETCH t.user
             WHERE t.tokenHash = :tokenHash
             """)
-    Optional<RefreshToken> findByTokenHashWithUser(@Param("tokenHash") String tokenHash);
+  Optional<RefreshToken> findByTokenHashWithUser(@Param("tokenHash") String tokenHash);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("""
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      """
             UPDATE RefreshToken t
             SET t.revokedAt = CURRENT_TIMESTAMP
             WHERE t.user.id = :userId AND t.revokedAt IS NULL
             """)
-    void revokeAllActiveForUser(@Param("userId") UUID userId);
+  void revokeAllActiveForUser(@Param("userId") UUID userId);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("""
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      """
             UPDATE RefreshToken t
             SET t.revokedAt = CURRENT_TIMESTAMP
             WHERE t.user.id = :userId
               AND t.revokedAt IS NULL
               AND (t.deviceId = :deviceId OR t.deviceId IS NULL)
             """)
-    void revokeActiveForUserAndDevice(@Param("userId") UUID userId, @Param("deviceId") String deviceId);
+  void revokeActiveForUserAndDevice(
+      @Param("userId") UUID userId, @Param("deviceId") String deviceId);
 }

@@ -7,9 +7,5 @@ import jakarta.validation.constraints.Size;
 
 /** Shared body for OTP verification (registration + password reset). */
 public record VerifyOtpRequest(
-        @NotBlank @Email @Size(max = 255) String email,
-        @NotBlank
-        @Pattern(regexp = "^\\d{6}$", message = "must be 6 digits")
-        String otp
-) {
-}
+    @NotBlank @Email @Size(max = 255) String email,
+    @NotBlank @Pattern(regexp = "^\\d{6}$", message = "must be 6 digits") String otp) {}

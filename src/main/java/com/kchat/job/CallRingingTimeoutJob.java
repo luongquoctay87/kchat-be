@@ -10,24 +10,24 @@ import org.springframework.stereotype.Component;
 @Component
 public class CallRingingTimeoutJob {
 
-    private static final Logger log = LoggerFactory.getLogger(CallRingingTimeoutJob.class);
+  private static final Logger log = LoggerFactory.getLogger(CallRingingTimeoutJob.class);
 
-    private final CallService callService;
+  private final CallService callService;
 
-    public CallRingingTimeoutJob(CallService callService) {
-        this.callService = callService;
+  public CallRingingTimeoutJob(CallService callService) {
+    this.callService = callService;
+  }
+
+  @Scheduled(fixedDelayString = "${kchat.cleanup.call-ringing-interval-ms:15000}")
+  @SchedulerLock(name = "callRingingTimeout", lockAtMostFor = "PT20S", lockAtLeastFor = "PT5S")
+  public void expireRinging() {
+    try {
+      int n = callService.expireRingingCalls();
+      if (n > 0) {
+        log.info("Marked {} ringing call(s) as missed", n);
+      }
+    } catch (RuntimeException ex) {
+      log.error("Call ringing timeout job failed", ex);
     }
-
-    @Scheduled(fixedDelayString = "${kchat.cleanup.call-ringing-interval-ms:15000}")
-    @SchedulerLock(name = "callRingingTimeout", lockAtMostFor = "PT20S", lockAtLeastFor = "PT5S")
-    public void expireRinging() {
-        try {
-            int n = callService.expireRingingCalls();
-            if (n > 0) {
-                log.info("Marked {} ringing call(s) as missed", n);
-            }
-        } catch (RuntimeException ex) {
-            log.error("Call ringing timeout job failed", ex);
-        }
-    }
+  }
 }

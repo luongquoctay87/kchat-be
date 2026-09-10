@@ -12,95 +12,94 @@ import java.util.UUID;
 @Table(name = "registration_otp_tokens")
 public class RegistrationOtpToken {
 
-    @Id
-    private UUID id;
+  @Id private UUID id;
 
-    @Column(nullable = false, length = 255)
-    private String email;
+  @Column(nullable = false, length = 255)
+  private String email;
 
-    @Column(name = "otp_hash", nullable = false)
-    private String otpHash;
+  @Column(name = "otp_hash", nullable = false)
+  private String otpHash;
 
-    @Column(name = "registration_token_hash")
-    private String registrationTokenHash;
+  @Column(name = "registration_token_hash")
+  private String registrationTokenHash;
 
-    @Column(name = "verified_at")
-    private Instant verifiedAt;
+  @Column(name = "verified_at")
+  private Instant verifiedAt;
 
-    @Column(name = "expires_at", nullable = false)
-    private Instant expiresAt;
+  @Column(name = "expires_at", nullable = false)
+  private Instant expiresAt;
 
-    @Column(name = "used_at")
-    private Instant usedAt;
+  @Column(name = "used_at")
+  private Instant usedAt;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
-    @PrePersist
-    void onCreate() {
-        if (id == null) {
-            id = UUID.randomUUID();
-        }
-        createdAt = Instant.now();
+  @PrePersist
+  void onCreate() {
+    if (id == null) {
+      id = UUID.randomUUID();
     }
+    createdAt = Instant.now();
+  }
 
-    public UUID getId() {
-        return id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public String getEmail() {
-        return email;
-    }
+  public String getEmail() {
+    return email;
+  }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+  public void setEmail(String email) {
+    this.email = email;
+  }
 
-    public String getOtpHash() {
-        return otpHash;
-    }
+  public String getOtpHash() {
+    return otpHash;
+  }
 
-    public void setOtpHash(String otpHash) {
-        this.otpHash = otpHash;
-    }
+  public void setOtpHash(String otpHash) {
+    this.otpHash = otpHash;
+  }
 
-    public String getRegistrationTokenHash() {
-        return registrationTokenHash;
-    }
+  public String getRegistrationTokenHash() {
+    return registrationTokenHash;
+  }
 
-    public void setRegistrationTokenHash(String registrationTokenHash) {
-        this.registrationTokenHash = registrationTokenHash;
-    }
+  public void setRegistrationTokenHash(String registrationTokenHash) {
+    this.registrationTokenHash = registrationTokenHash;
+  }
 
-    public Instant getVerifiedAt() {
-        return verifiedAt;
-    }
+  public Instant getVerifiedAt() {
+    return verifiedAt;
+  }
 
-    public void setVerifiedAt(Instant verifiedAt) {
-        this.verifiedAt = verifiedAt;
-    }
+  public void setVerifiedAt(Instant verifiedAt) {
+    this.verifiedAt = verifiedAt;
+  }
 
-    public Instant getExpiresAt() {
-        return expiresAt;
-    }
+  public Instant getExpiresAt() {
+    return expiresAt;
+  }
 
-    public void setExpiresAt(Instant expiresAt) {
-        this.expiresAt = expiresAt;
-    }
+  public void setExpiresAt(Instant expiresAt) {
+    this.expiresAt = expiresAt;
+  }
 
-    public Instant getUsedAt() {
-        return usedAt;
-    }
+  public Instant getUsedAt() {
+    return usedAt;
+  }
 
-    public void setUsedAt(Instant usedAt) {
-        this.usedAt = usedAt;
-    }
+  public void setUsedAt(Instant usedAt) {
+    this.usedAt = usedAt;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 
-    public boolean isUsable() {
-        return usedAt == null && expiresAt.isAfter(Instant.now());
-    }
+  public boolean isUsable() {
+    return usedAt == null && expiresAt.isAfter(Instant.now());
+  }
 }

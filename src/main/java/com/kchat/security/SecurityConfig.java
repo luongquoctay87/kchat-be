@@ -27,93 +27,92 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final ObjectMapper objectMapper;
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final DeviceSessionFilter deviceSessionFilter;
-    private final AuthRateLimitFilter authRateLimitFilter;
-    private final Environment environment;
+  private final ObjectMapper objectMapper;
+  private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final DeviceSessionFilter deviceSessionFilter;
+  private final AuthRateLimitFilter authRateLimitFilter;
+  private final Environment environment;
 
-    public SecurityConfig(
-            ObjectMapper objectMapper,
-            JwtAuthenticationFilter jwtAuthenticationFilter,
-            DeviceSessionFilter deviceSessionFilter,
-            AuthRateLimitFilter authRateLimitFilter,
-            Environment environment
-    ) {
-        this.objectMapper = objectMapper;
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        this.deviceSessionFilter = deviceSessionFilter;
-        this.authRateLimitFilter = authRateLimitFilter;
-        this.environment = environment;
-    }
+  public SecurityConfig(
+      ObjectMapper objectMapper,
+      JwtAuthenticationFilter jwtAuthenticationFilter,
+      DeviceSessionFilter deviceSessionFilter,
+      AuthRateLimitFilter authRateLimitFilter,
+      Environment environment) {
+    this.objectMapper = objectMapper;
+    this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    this.deviceSessionFilter = deviceSessionFilter;
+    this.authRateLimitFilter = authRateLimitFilter;
+    this.environment = environment;
+  }
 
-    @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        boolean prod = environment.acceptsProfiles(Profiles.of("prod"));
-        http
-                .csrf(AbstractHttpConfigurer::disable)
-                .cors(Customizer.withDefaults())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .formLogin(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> {
-                    auth.requestMatchers(
-                            "/actuator/health",
-                            "/actuator/health/**"
-                    ).permitAll();
-                    if (!prod) {
-                        auth.requestMatchers(
-                                "/actuator/info",
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html"
-                        ).permitAll();
-                    }
-                    auth.requestMatchers(HttpMethod.POST,
-                                "/auth/send-registration-otp",
-                                "/auth/verify-registration-otp",
-                                "/auth/register",
-                                "/auth/login",
-                                "/auth/refresh",
-                                "/auth/logout",
-                                "/auth/forgot-password",
-                                "/auth/verify-reset-otp",
-                                "/auth/reset-password"
-                        ).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/hooks/**").permitAll()
-                        // Handshake still requires Bearer via JwtAuthenticationFilter / interceptor
-                        .requestMatchers("/ws").authenticated()
-                        .anyRequest().authenticated();
-                })
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(authenticationEntryPoint())
-                        .accessDeniedHandler(accessDeniedHandler())
-                )
-                .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(deviceSessionFilter, JwtAuthenticationFilter.class);
-        return http.build();
-    }
+  @Bean
+  SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    boolean prod = environment.acceptsProfiles(Profiles.of("prod"));
+    http.csrf(AbstractHttpConfigurer::disable)
+        .cors(Customizer.withDefaults())
+        .sessionManagement(
+            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .httpBasic(AbstractHttpConfigurer::disable)
+        .formLogin(AbstractHttpConfigurer::disable)
+        .authorizeHttpRequests(
+            auth -> {
+              auth.requestMatchers("/actuator/health", "/actuator/health/**").permitAll();
+              if (!prod) {
+                auth.requestMatchers(
+                        "/actuator/info", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                    .permitAll();
+              }
+              auth.requestMatchers(
+                      HttpMethod.POST,
+                      "/auth/send-registration-otp",
+                      "/auth/verify-registration-otp",
+                      "/auth/register",
+                      "/auth/login",
+                      "/auth/refresh",
+                      "/auth/logout",
+                      "/auth/forgot-password",
+                      "/auth/verify-reset-otp",
+                      "/auth/reset-password")
+                  .permitAll()
+                  .requestMatchers(HttpMethod.POST, "/hooks/**")
+                  .permitAll()
+                  // Handshake still requires Bearer via JwtAuthenticationFilter / interceptor
+                  .requestMatchers("/ws")
+                  .authenticated()
+                  .anyRequest()
+                  .authenticated();
+            })
+        .exceptionHandling(
+            ex ->
+                ex.authenticationEntryPoint(authenticationEntryPoint())
+                    .accessDeniedHandler(accessDeniedHandler()))
+        .addFilterBefore(authRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterAfter(deviceSessionFilter, JwtAuthenticationFilter.class);
+    return http.build();
+  }
 
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+  @Bean
+  PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
 
-    private AuthenticationEntryPoint authenticationEntryPoint() {
-        return (request, response, authException) ->
-                writeError(response, HttpStatus.UNAUTHORIZED, "unauthorized", "Authentication required");
-    }
+  private AuthenticationEntryPoint authenticationEntryPoint() {
+    return (request, response, authException) ->
+        writeError(response, HttpStatus.UNAUTHORIZED, "unauthorized", "Authentication required");
+  }
 
-    private AccessDeniedHandler accessDeniedHandler() {
-        return (request, response, accessDeniedException) ->
-                writeError(response, HttpStatus.FORBIDDEN, "forbidden", "Access denied");
-    }
+  private AccessDeniedHandler accessDeniedHandler() {
+    return (request, response, accessDeniedException) ->
+        writeError(response, HttpStatus.FORBIDDEN, "forbidden", "Access denied");
+  }
 
-    private void writeError(HttpServletResponse response, HttpStatus status, String code, String message)
-            throws IOException {
-        response.setStatus(status.value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        objectMapper.writeValue(response.getOutputStream(), new ErrorResponse(code, message));
-    }
+  private void writeError(
+      HttpServletResponse response, HttpStatus status, String code, String message)
+      throws IOException {
+    response.setStatus(status.value());
+    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+    objectMapper.writeValue(response.getOutputStream(), new ErrorResponse(code, message));
+  }
 }

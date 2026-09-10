@@ -18,119 +18,118 @@ import java.util.UUID;
 @Table(name = "messages")
 public class ChatMessage {
 
-    @Id
-    private UUID id;
+  @Id private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "room_id", nullable = false)
-    private ChatRoom room;
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "room_id", nullable = false)
+  private ChatRoom room;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sender_id")
-    private User sender;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "sender_id")
+  private User sender;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private MessageType type = MessageType.text;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 20)
+  private MessageType type = MessageType.text;
 
-    @Column(columnDefinition = "TEXT")
-    private String content;
+  @Column(columnDefinition = "TEXT")
+  private String content;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reply_to_id")
-    private ChatMessage replyTo;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "reply_to_id")
+  private ChatMessage replyTo;
 
-    @Column(name = "edited_at")
-    private Instant editedAt;
+  @Column(name = "edited_at")
+  private Instant editedAt;
 
-    @Column(name = "deleted_at")
-    private Instant deletedAt;
+  @Column(name = "deleted_at")
+  private Instant deletedAt;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
-    @PrePersist
-    void onCreate() {
-        if (id == null) {
-            id = UUID.randomUUID();
-        }
-        if (createdAt == null) {
-            createdAt = Instant.now();
-        }
-        if (type == null) {
-            type = MessageType.text;
-        }
+  @PrePersist
+  void onCreate() {
+    if (id == null) {
+      id = UUID.randomUUID();
     }
-
-    public UUID getId() {
-        return id;
+    if (createdAt == null) {
+      createdAt = Instant.now();
     }
-
-    public void setId(UUID id) {
-        this.id = id;
+    if (type == null) {
+      type = MessageType.text;
     }
+  }
 
-    public ChatRoom getRoom() {
-        return room;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public void setRoom(ChatRoom room) {
-        this.room = room;
-    }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public User getSender() {
-        return sender;
-    }
+  public ChatRoom getRoom() {
+    return room;
+  }
 
-    public void setSender(User sender) {
-        this.sender = sender;
-    }
+  public void setRoom(ChatRoom room) {
+    this.room = room;
+  }
 
-    public MessageType getType() {
-        return type;
-    }
+  public User getSender() {
+    return sender;
+  }
 
-    public void setType(MessageType type) {
-        this.type = type;
-    }
+  public void setSender(User sender) {
+    this.sender = sender;
+  }
 
-    public String getContent() {
-        return content;
-    }
+  public MessageType getType() {
+    return type;
+  }
 
-    public void setContent(String content) {
-        this.content = content;
-    }
+  public void setType(MessageType type) {
+    this.type = type;
+  }
 
-    public ChatMessage getReplyTo() {
-        return replyTo;
-    }
+  public String getContent() {
+    return content;
+  }
 
-    public void setReplyTo(ChatMessage replyTo) {
-        this.replyTo = replyTo;
-    }
+  public void setContent(String content) {
+    this.content = content;
+  }
 
-    public Instant getDeletedAt() {
-        return deletedAt;
-    }
+  public ChatMessage getReplyTo() {
+    return replyTo;
+  }
 
-    public void setDeletedAt(Instant deletedAt) {
-        this.deletedAt = deletedAt;
-    }
+  public void setReplyTo(ChatMessage replyTo) {
+    this.replyTo = replyTo;
+  }
 
-    public Instant getEditedAt() {
-        return editedAt;
-    }
+  public Instant getDeletedAt() {
+    return deletedAt;
+  }
 
-    public void setEditedAt(Instant editedAt) {
-        this.editedAt = editedAt;
-    }
+  public void setDeletedAt(Instant deletedAt) {
+    this.deletedAt = deletedAt;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public Instant getEditedAt() {
+    return editedAt;
+  }
 
-    public boolean isDeleted() {
-        return deletedAt != null;
-    }
+  public void setEditedAt(Instant editedAt) {
+    this.editedAt = editedAt;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
+
+  public boolean isDeleted() {
+    return deletedAt != null;
+  }
 }

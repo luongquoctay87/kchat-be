@@ -5,6 +5,6 @@ import java.util.UUID;
 
 public interface IceConfigService {
 
-    /** ICE servers for the authenticated caller (may include ephemeral TURN creds). */
-    IceServersResponse iceServersForUser(UUID userId);
+  /** ICE servers for the authenticated caller (may include ephemeral TURN creds). */
+  IceServersResponse iceServersForUser(UUID userId);
 }

@@ -7,13 +7,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface CallParticipantRepository extends JpaRepository<CallParticipant, CallParticipant.Pk> {
+public interface CallParticipantRepository
+    extends JpaRepository<CallParticipant, CallParticipant.Pk> {
 
-    @Query("""
+  @Query(
+      """
             SELECT p.userId FROM CallParticipant p
             WHERE p.callId = :callId
             """)
-    List<UUID> findUserIdsByCallId(@Param("callId") UUID callId);
+  List<UUID> findUserIdsByCallId(@Param("callId") UUID callId);
 
-    boolean existsByCallIdAndUserId(UUID callId, UUID userId);
+  boolean existsByCallIdAndUserId(UUID callId, UUID userId);
 }

@@ -12,13 +12,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @EnableSchedulerLock(defaultLockAtMostFor = "PT5M")
 public class ShedLockConfig {
 
-    @Bean
-    public LockProvider lockProvider(DataSource dataSource) {
-        return new JdbcTemplateLockProvider(
-                JdbcTemplateLockProvider.Configuration.builder()
-                        .withJdbcTemplate(new JdbcTemplate(dataSource))
-                        .usingDbTime()
-                        .build()
-        );
-    }
+  @Bean
+  public LockProvider lockProvider(DataSource dataSource) {
+    return new JdbcTemplateLockProvider(
+        JdbcTemplateLockProvider.Configuration.builder()
+            .withJdbcTemplate(new JdbcTemplate(dataSource))
+            .usingDbTime()
+            .build());
+  }
 }

@@ -8,20 +8,19 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 public final class SecurityUtils {
 
-    private SecurityUtils() {
-    }
+  private SecurityUtils() {}
 
-    public static Optional<UserPrincipal> currentUser() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof UserPrincipal principal)) {
-            return Optional.empty();
-        }
-        return Optional.of(principal);
+  public static Optional<UserPrincipal> currentUser() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth == null || !(auth.getPrincipal() instanceof UserPrincipal principal)) {
+      return Optional.empty();
     }
+    return Optional.of(principal);
+  }
 
-    public static UUID requireUserId() {
-        return currentUser()
-                .map(UserPrincipal::getId)
-                .orElseThrow(() -> ApiException.unauthorized("Authentication required"));
-    }
+  public static UUID requireUserId() {
+    return currentUser()
+        .map(UserPrincipal::getId)
+        .orElseThrow(() -> ApiException.unauthorized("Authentication required"));
+  }
 }

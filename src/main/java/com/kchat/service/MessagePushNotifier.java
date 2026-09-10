@@ -10,24 +10,21 @@ import org.springframework.stereotype.Component;
 @Component
 public class MessagePushNotifier {
 
-    private final FcmPushService fcmPushService;
-    private final MessagePushDeliveryService deliveryService;
-    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+  private final FcmPushService fcmPushService;
+  private final MessagePushDeliveryService deliveryService;
+  private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
-    public MessagePushNotifier(FcmPushService fcmPushService, MessagePushDeliveryService deliveryService) {
-        this.fcmPushService = fcmPushService;
-        this.deliveryService = deliveryService;
-    }
+  public MessagePushNotifier(
+      FcmPushService fcmPushService, MessagePushDeliveryService deliveryService) {
+    this.fcmPushService = fcmPushService;
+    this.deliveryService = deliveryService;
+  }
 
-    public void onMessageCreated(
-            UUID roomId,
-            UUID senderId,
-            List<UUID> memberIds,
-            MessageDto message
-    ) {
-        if (!fcmPushService.isEnabled() || memberIds == null || memberIds.isEmpty()) {
-            return;
-        }
-        executor.execute(() -> deliveryService.deliver(roomId, senderId, memberIds, message));
+  public void onMessageCreated(
+      UUID roomId, UUID senderId, List<UUID> memberIds, MessageDto message) {
+    if (!fcmPushService.isEnabled() || memberIds == null || memberIds.isEmpty()) {
+      return;
     }
+    executor.execute(() -> deliveryService.deliver(roomId, senderId, memberIds, message));
+  }
 }

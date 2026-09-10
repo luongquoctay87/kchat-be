@@ -15,88 +15,87 @@ import java.util.UUID;
 @Table(name = "channel_webhooks")
 public class ChannelWebhook {
 
-    @Id
-    private UUID id;
+  @Id private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "room_id", nullable = false)
-    private ChatRoom room;
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "room_id", nullable = false)
+  private ChatRoom room;
 
-    @Column(nullable = false, length = 128)
-    private String name;
+  @Column(nullable = false, length = 128)
+  private String name;
 
-    @Column(name = "secret_hash", nullable = false, length = 255)
-    private String secretHash;
+  @Column(name = "secret_hash", nullable = false, length = 255)
+  private String secretHash;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
-    private User createdBy;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "created_by")
+  private User createdBy;
 
-    @Column(name = "is_active", nullable = false)
-    private boolean active = true;
+  @Column(name = "is_active", nullable = false)
+  private boolean active = true;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
-    @PrePersist
-    void onCreate() {
-        if (id == null) {
-            id = UUID.randomUUID();
-        }
-        if (createdAt == null) {
-            createdAt = Instant.now();
-        }
+  @PrePersist
+  void onCreate() {
+    if (id == null) {
+      id = UUID.randomUUID();
     }
-
-    public UUID getId() {
-        return id;
+    if (createdAt == null) {
+      createdAt = Instant.now();
     }
+  }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public ChatRoom getRoom() {
-        return room;
-    }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public void setRoom(ChatRoom room) {
-        this.room = room;
-    }
+  public ChatRoom getRoom() {
+    return room;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public void setRoom(ChatRoom room) {
+    this.room = room;
+  }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public String getSecretHash() {
-        return secretHash;
-    }
+  public void setName(String name) {
+    this.name = name;
+  }
 
-    public void setSecretHash(String secretHash) {
-        this.secretHash = secretHash;
-    }
+  public String getSecretHash() {
+    return secretHash;
+  }
 
-    public User getCreatedBy() {
-        return createdBy;
-    }
+  public void setSecretHash(String secretHash) {
+    this.secretHash = secretHash;
+  }
 
-    public void setCreatedBy(User createdBy) {
-        this.createdBy = createdBy;
-    }
+  public User getCreatedBy() {
+    return createdBy;
+  }
 
-    public boolean isActive() {
-        return active;
-    }
+  public void setCreatedBy(User createdBy) {
+    this.createdBy = createdBy;
+  }
 
-    public void setActive(boolean active) {
-        this.active = active;
-    }
+  public boolean isActive() {
+    return active;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public void setActive(boolean active) {
+    this.active = active;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 }

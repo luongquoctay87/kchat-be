@@ -32,55 +32,55 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/users")
 public class UserController {
 
-    private final UserService userService;
-    private final ChatService chatService;
-    private final MediaStorage mediaStorage;
+  private final UserService userService;
+  private final ChatService chatService;
+  private final MediaStorage mediaStorage;
 
-    public UserController(UserService userService, ChatService chatService, MediaStorage mediaStorage) {
-        this.userService = userService;
-        this.chatService = chatService;
-        this.mediaStorage = mediaStorage;
-    }
+  public UserController(
+      UserService userService, ChatService chatService, MediaStorage mediaStorage) {
+    this.userService = userService;
+    this.chatService = chatService;
+    this.mediaStorage = mediaStorage;
+  }
 
-    @GetMapping("/me")
-    public UserProfileDto getProfile() {
-        return userService.getProfile(SecurityUtils.requireUserId());
-    }
+  @GetMapping("/me")
+  public UserProfileDto getProfile() {
+    return userService.getProfile(SecurityUtils.requireUserId());
+  }
 
-    @PatchMapping("/me")
-    public UserProfileDto updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
-        return userService.updateProfile(SecurityUtils.requireUserId(), request);
-    }
+  @PatchMapping("/me")
+  public UserProfileDto updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+    return userService.updateProfile(SecurityUtils.requireUserId(), request);
+  }
 
-    @PostMapping(path = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public UserProfileDto updateAvatar(@RequestPart("file") MultipartFile file) {
-        return userService.updateAvatar(SecurityUtils.requireUserId(), file);
-    }
+  @PostMapping(path = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public UserProfileDto updateAvatar(@RequestPart("file") MultipartFile file) {
+    return userService.updateAvatar(SecurityUtils.requireUserId(), file);
+  }
 
-    @GetMapping("/{userId}/avatar")
-    public ResponseEntity<Resource> getAvatar(@PathVariable UUID userId) {
-        SecurityUtils.requireUserId();
-        try {
-            return MediaHttp.inline(
-                    mediaStorage.open(userService.requireAvatarKey(userId)),
-                    "private, max-age=86400");
-        } catch (IllegalArgumentException | IOException ex) {
-            throw ApiException.notFound("Avatar file missing");
-        }
+  @GetMapping("/{userId}/avatar")
+  public ResponseEntity<Resource> getAvatar(@PathVariable UUID userId) {
+    SecurityUtils.requireUserId();
+    try {
+      return MediaHttp.inline(
+          mediaStorage.open(userService.requireAvatarKey(userId)), "private, max-age=86400");
+    } catch (IllegalArgumentException | IOException ex) {
+      throw ApiException.notFound("Avatar file missing");
     }
+  }
 
-    @GetMapping("/me/settings")
-    public UserSettingsDto getSettings() {
-        return userService.getSettings(SecurityUtils.requireUserId());
-    }
+  @GetMapping("/me/settings")
+  public UserSettingsDto getSettings() {
+    return userService.getSettings(SecurityUtils.requireUserId());
+  }
 
-    @PatchMapping("/me/settings")
-    public UserSettingsDto updateSettings(@Valid @RequestBody UpdateUserSettingsRequest request) {
-        return userService.updateSettings(SecurityUtils.requireUserId(), request);
-    }
+  @PatchMapping("/me/settings")
+  public UserSettingsDto updateSettings(@Valid @RequestBody UpdateUserSettingsRequest request) {
+    return userService.updateSettings(SecurityUtils.requireUserId(), request);
+  }
 
-    @DeleteMapping("/me/messages")
-    public WipeMessagesResultDto wipeMyMessages() {
-        return chatService.wipeAllMyMessages(SecurityUtils.requireUserId());
-    }
+  @DeleteMapping("/me/messages")
+  public WipeMessagesResultDto wipeMyMessages() {
+    return chatService.wipeAllMyMessages(SecurityUtils.requireUserId());
+  }
 }

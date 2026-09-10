@@ -4,5 +4,5 @@ import java.util.UUID;
 
 public interface PresenceEventPublisher {
 
-    void presenceChanged(UUID userId, boolean online);
+  void presenceChanged(UUID userId, boolean online);
 }

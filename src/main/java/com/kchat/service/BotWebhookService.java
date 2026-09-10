@@ -10,14 +10,14 @@ import java.util.UUID;
 
 public interface BotWebhookService {
 
-    MessageDto ingestAlert(UUID webhookId, String plainSecret, BotAlertRequest request);
+  MessageDto ingestAlert(UUID webhookId, String plainSecret, BotAlertRequest request);
 
-    WebhookCreatedDto createWebhook(UUID userId, UUID roomId, CreateWebhookRequest request);
+  WebhookCreatedDto createWebhook(UUID userId, UUID roomId, CreateWebhookRequest request);
 
-    List<WebhookDto> listWebhooks(UUID userId, UUID roomId);
+  List<WebhookDto> listWebhooks(UUID userId, UUID roomId);
 
-    void deleteWebhook(UUID userId, UUID roomId, UUID webhookId);
+  void deleteWebhook(UUID userId, UUID roomId, UUID webhookId);
 
-    /** Ensures default ops-alerts webhook exists (startup). */
-    void ensureDefaultWebhooks();
+  /** Ensures default ops-alerts webhook exists (startup). */
+  void ensureDefaultWebhooks();
 }

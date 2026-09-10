@@ -14,26 +14,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Public inbound webhook for bot alerts (#17). Auth via X-Webhook-Secret, not JWT.
- */
+/** Public inbound webhook for bot alerts (#17). Auth via X-Webhook-Secret, not JWT. */
 @RestController
 @RequestMapping("/hooks")
 public class HookController {
 
-    private final BotWebhookService botWebhookService;
+  private final BotWebhookService botWebhookService;
 
-    public HookController(BotWebhookService botWebhookService) {
-        this.botWebhookService = botWebhookService;
-    }
+  public HookController(BotWebhookService botWebhookService) {
+    this.botWebhookService = botWebhookService;
+  }
 
-    @PostMapping("/{webhookId}")
-    @ResponseStatus(HttpStatus.CREATED)
-    public MessageDto ingest(
-            @PathVariable UUID webhookId,
-            @RequestHeader(value = "X-Webhook-Secret", required = false) String secret,
-            @Valid @RequestBody BotAlertRequest request
-    ) {
-        return botWebhookService.ingestAlert(webhookId, secret, request);
-    }
+  @PostMapping("/{webhookId}")
+  @ResponseStatus(HttpStatus.CREATED)
+  public MessageDto ingest(
+      @PathVariable UUID webhookId,
+      @RequestHeader(value = "X-Webhook-Secret", required = false) String secret,
+      @Valid @RequestBody BotAlertRequest request) {
+    return botWebhookService.ingestAlert(webhookId, secret, request);
+  }
 }

@@ -166,6 +166,8 @@ psql -U admin -d kchat -f ../docs/sql/kchat-schema.sql
 psql -U admin -d kchat -f ../docs/sql/kchat-seed.sql   # tuỳ chọn — nguyenva / password
 
 # Build
+./mvnw spotless:apply   # format Java (Google Java Format)
+./mvnw spotless:check   # CI check
 ./mvnw test
 ./mvnw -DskipTests package
 docker build -t kchat-api .

@@ -14,56 +14,55 @@ import java.util.UUID;
 @IdClass(MessageMention.Pk.class)
 public class MessageMention {
 
-    @Id
-    @Column(name = "message_id", nullable = false)
-    private UUID messageId;
+  @Id
+  @Column(name = "message_id", nullable = false)
+  private UUID messageId;
 
-    @Id
-    @Column(name = "user_id", nullable = false)
+  @Id
+  @Column(name = "user_id", nullable = false)
+  private UUID userId;
+
+  public UUID getMessageId() {
+    return messageId;
+  }
+
+  public void setMessageId(UUID messageId) {
+    this.messageId = messageId;
+  }
+
+  public UUID getUserId() {
+    return userId;
+  }
+
+  public void setUserId(UUID userId) {
+    this.userId = userId;
+  }
+
+  public static class Pk implements Serializable {
+    private UUID messageId;
     private UUID userId;
 
-    public UUID getMessageId() {
-        return messageId;
+    public Pk() {}
+
+    public Pk(UUID messageId, UUID userId) {
+      this.messageId = messageId;
+      this.userId = userId;
     }
 
-    public void setMessageId(UUID messageId) {
-        this.messageId = messageId;
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof Pk pk)) {
+        return false;
+      }
+      return Objects.equals(messageId, pk.messageId) && Objects.equals(userId, pk.userId);
     }
 
-    public UUID getUserId() {
-        return userId;
+    @Override
+    public int hashCode() {
+      return Objects.hash(messageId, userId);
     }
-
-    public void setUserId(UUID userId) {
-        this.userId = userId;
-    }
-
-    public static class Pk implements Serializable {
-        private UUID messageId;
-        private UUID userId;
-
-        public Pk() {
-        }
-
-        public Pk(UUID messageId, UUID userId) {
-            this.messageId = messageId;
-            this.userId = userId;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (!(o instanceof Pk pk)) {
-                return false;
-            }
-            return Objects.equals(messageId, pk.messageId) && Objects.equals(userId, pk.userId);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(messageId, userId);
-        }
-    }
+  }
 }

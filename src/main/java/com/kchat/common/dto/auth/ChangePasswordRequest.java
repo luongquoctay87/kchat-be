@@ -6,10 +6,8 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record ChangePasswordRequest(
-        @NotBlank String currentPassword,
-        @NotBlank
+    @NotBlank String currentPassword,
+    @NotBlank
         @Size(min = PasswordRules.MIN_LENGTH, max = PasswordRules.MAX_LENGTH)
         @Pattern(regexp = PasswordRules.REGEX, message = PasswordRules.MESSAGE)
-        String newPassword
-) {
-}
+        String newPassword) {}

@@ -10,19 +10,21 @@ import org.springframework.data.repository.query.Param;
 
 public interface MessageAttachmentRepository extends JpaRepository<MessageAttachment, UUID> {
 
-    @Query("""
+  @Query(
+      """
             SELECT a FROM MessageAttachment a
             JOIN FETCH a.message m
             JOIN FETCH m.room
             WHERE a.id = :id
             """)
-    java.util.Optional<MessageAttachment> findByIdWithMessageAndRoom(@Param("id") UUID id);
+  java.util.Optional<MessageAttachment> findByIdWithMessageAndRoom(@Param("id") UUID id);
 
-    @Query("""
+  @Query(
+      """
             SELECT a FROM MessageAttachment a
             JOIN FETCH a.message
             WHERE a.message.id IN :messageIds
             ORDER BY a.createdAt ASC
             """)
-    List<MessageAttachment> findByMessageIdIn(@Param("messageIds") Collection<UUID> messageIds);
+  List<MessageAttachment> findByMessageIdIn(@Param("messageIds") Collection<UUID> messageIds);
 }

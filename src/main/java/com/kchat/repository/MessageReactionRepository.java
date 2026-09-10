@@ -7,11 +7,13 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface MessageReactionRepository extends JpaRepository<MessageReaction, MessageReaction.Pk> {
+public interface MessageReactionRepository
+    extends JpaRepository<MessageReaction, MessageReaction.Pk> {
 
-    List<MessageReaction> findByMessageIdIn(Collection<UUID> messageIds);
+  List<MessageReaction> findByMessageIdIn(Collection<UUID> messageIds);
 
-    List<MessageReaction> findByMessageId(UUID messageId);
+  List<MessageReaction> findByMessageId(UUID messageId);
 
-    Optional<MessageReaction> findByMessageIdAndUserIdAndEmoji(UUID messageId, UUID userId, String emoji);
+  Optional<MessageReaction> findByMessageIdAndUserIdAndEmoji(
+      UUID messageId, UUID userId, String emoji);
 }

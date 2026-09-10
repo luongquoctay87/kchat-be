@@ -15,29 +15,28 @@ import software.amazon.awssdk.services.s3.S3Configuration;
 @Configuration
 public class S3Config {
 
-    @Bean(destroyMethod = "close")
-    S3Client s3Client(S3Properties properties) {
-        if (!StringUtils.hasText(properties.getBucket())) {
-            throw new IllegalStateException("KCHAT_S3_BUCKET is required");
-        }
-
-        S3ClientBuilder builder = S3Client.builder()
-                .region(Region.of(properties.getRegion()));
-
-        if (StringUtils.hasText(properties.getAccessKey())) {
-            builder.credentialsProvider(StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(properties.getAccessKey(), properties.getSecretKey())));
-        } else {
-            builder.credentialsProvider(DefaultCredentialsProvider.create());
-        }
-
-        if (StringUtils.hasText(properties.getEndpoint())) {
-            builder.endpointOverride(URI.create(properties.getEndpoint()))
-                    .serviceConfiguration(S3Configuration.builder()
-                            .pathStyleAccessEnabled(true)
-                            .build());
-        }
-
-        return builder.build();
+  @Bean(destroyMethod = "close")
+  S3Client s3Client(S3Properties properties) {
+    if (!StringUtils.hasText(properties.getBucket())) {
+      throw new IllegalStateException("KCHAT_S3_BUCKET is required");
     }
+
+    S3ClientBuilder builder = S3Client.builder().region(Region.of(properties.getRegion()));
+
+    if (StringUtils.hasText(properties.getAccessKey())) {
+      builder.credentialsProvider(
+          StaticCredentialsProvider.create(
+              AwsBasicCredentials.create(properties.getAccessKey(), properties.getSecretKey())));
+    } else {
+      builder.credentialsProvider(DefaultCredentialsProvider.create());
+    }
+
+    if (StringUtils.hasText(properties.getEndpoint())) {
+      builder
+          .endpointOverride(URI.create(properties.getEndpoint()))
+          .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build());
+    }
+
+    return builder.build();
+  }
 }

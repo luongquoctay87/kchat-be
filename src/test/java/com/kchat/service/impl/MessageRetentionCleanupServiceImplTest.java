@@ -27,90 +27,85 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class MessageRetentionCleanupServiceImplTest {
 
-    @Mock
-    private ChatMessageRepository chatMessageRepository;
-    @Mock
-    private MessageAttachmentRepository messageAttachmentRepository;
-    @Mock
-    private MediaStorage mediaStorage;
+  @Mock private ChatMessageRepository chatMessageRepository;
+  @Mock private MessageAttachmentRepository messageAttachmentRepository;
+  @Mock private MediaStorage mediaStorage;
 
-    private MessageRetentionCleanupServiceImpl service;
+  private MessageRetentionCleanupServiceImpl service;
 
-    @BeforeEach
-    void setUp() {
-        service = new MessageRetentionCleanupServiceImpl(
-                chatMessageRepository,
-                messageAttachmentRepository,
-                mediaStorage
-        );
-    }
+  @BeforeEach
+  void setUp() {
+    service =
+        new MessageRetentionCleanupServiceImpl(
+            chatMessageRepository, messageAttachmentRepository, mediaStorage);
+  }
 
-    @Test
-    void purgeMessagesOlderThan_deletesDbThenMedia() {
-        Instant cutoff = Instant.parse("2025-01-01T00:00:00Z");
-        UUID roomId = UUID.randomUUID();
-        UUID messageId = UUID.randomUUID();
+  @Test
+  void purgeMessagesOlderThan_deletesDbThenMedia() {
+    Instant cutoff = Instant.parse("2025-01-01T00:00:00Z");
+    UUID roomId = UUID.randomUUID();
+    UUID messageId = UUID.randomUUID();
 
-        ExpiredMessageRow old = row(messageId, roomId);
-        MessageAttachment attachment = new MessageAttachment();
-        attachment.setS3Key("kchat/rooms/" + roomId + "/file.jpg");
+    ExpiredMessageRow old = row(messageId, roomId);
+    MessageAttachment attachment = new MessageAttachment();
+    attachment.setS3Key("kchat/rooms/" + roomId + "/file.jpg");
 
-        when(chatMessageRepository.findOlderThanForRetentionCleanup(cutoff, 100)).thenReturn(List.of(old));
-        when(messageAttachmentRepository.findByMessageIdIn(List.of(messageId))).thenReturn(List.of(attachment));
-        when(chatMessageRepository.deleteByIdIn(List.of(messageId))).thenReturn(1);
+    when(chatMessageRepository.findOlderThanForRetentionCleanup(cutoff, 100))
+        .thenReturn(List.of(old));
+    when(messageAttachmentRepository.findByMessageIdIn(List.of(messageId)))
+        .thenReturn(List.of(attachment));
+    when(chatMessageRepository.deleteByIdIn(List.of(messageId))).thenReturn(1);
 
-        int deleted = service.purgeMessagesOlderThan(cutoff, 100);
+    int deleted = service.purgeMessagesOlderThan(cutoff, 100);
 
-        assertEquals(1, deleted);
-        InOrder order = inOrder(chatMessageRepository, mediaStorage);
-        order.verify(chatMessageRepository).deleteByIdIn(List.of(messageId));
-        order.verify(mediaStorage).deleteQuietly("kchat/rooms/" + roomId + "/file.jpg");
-    }
+    assertEquals(1, deleted);
+    InOrder order = inOrder(chatMessageRepository, mediaStorage);
+    order.verify(chatMessageRepository).deleteByIdIn(List.of(messageId));
+    order.verify(mediaStorage).deleteQuietly("kchat/rooms/" + roomId + "/file.jpg");
+  }
 
-    @Test
-    void purgeMessagesOlderThan_noOpWhenEmpty() {
-        Instant cutoff = Instant.parse("2025-01-01T00:00:00Z");
-        when(chatMessageRepository.findOlderThanForRetentionCleanup(cutoff, 50)).thenReturn(List.of());
+  @Test
+  void purgeMessagesOlderThan_noOpWhenEmpty() {
+    Instant cutoff = Instant.parse("2025-01-01T00:00:00Z");
+    when(chatMessageRepository.findOlderThanForRetentionCleanup(cutoff, 50)).thenReturn(List.of());
 
-        assertEquals(0, service.purgeMessagesOlderThan(cutoff, 50));
+    assertEquals(0, service.purgeMessagesOlderThan(cutoff, 50));
 
-        verify(chatMessageRepository, never()).deleteByIdIn(any());
-        verify(mediaStorage, never()).deleteQuietly(any());
-    }
+    verify(chatMessageRepository, never()).deleteByIdIn(any());
+    verify(mediaStorage, never()).deleteQuietly(any());
+  }
 
-    @Test
-    void purgeMessagesOlderThan_skipsWhenBatchSizeZero() {
-        assertEquals(0, service.purgeMessagesOlderThan(Instant.now(), 0));
-        verify(chatMessageRepository, never()).findOlderThanForRetentionCleanup(any(), anyInt());
-    }
+  @Test
+  void purgeMessagesOlderThan_skipsWhenBatchSizeZero() {
+    assertEquals(0, service.purgeMessagesOlderThan(Instant.now(), 0));
+    verify(chatMessageRepository, never()).findOlderThanForRetentionCleanup(any(), anyInt());
+  }
 
-    @Test
-    void purgeMessagesOlderThan_capsBatchSize() {
-        Instant cutoff = Instant.parse("2025-01-01T00:00:00Z");
-        when(chatMessageRepository.findOlderThanForRetentionCleanup(
-                eq(cutoff),
-                eq(MessageRetentionCleanupServiceImpl.MAX_BATCH_SIZE)
-        )).thenReturn(List.of());
+  @Test
+  void purgeMessagesOlderThan_capsBatchSize() {
+    Instant cutoff = Instant.parse("2025-01-01T00:00:00Z");
+    when(chatMessageRepository.findOlderThanForRetentionCleanup(
+            eq(cutoff), eq(MessageRetentionCleanupServiceImpl.MAX_BATCH_SIZE)))
+        .thenReturn(List.of());
 
-        assertEquals(0, service.purgeMessagesOlderThan(cutoff, 50_000));
+    assertEquals(0, service.purgeMessagesOlderThan(cutoff, 50_000));
 
-        verify(chatMessageRepository).findOlderThanForRetentionCleanup(
-                cutoff,
-                MessageRetentionCleanupServiceImpl.MAX_BATCH_SIZE
-        );
-    }
+    verify(chatMessageRepository)
+        .findOlderThanForRetentionCleanup(
+            cutoff, MessageRetentionCleanupServiceImpl.MAX_BATCH_SIZE);
+  }
 
-    private static ExpiredMessageRow row(UUID id, UUID roomId) {
-        return new ExpiredMessageRow() {
-            @Override
-            public UUID getId() {
-                return id;
-            }
+  private static ExpiredMessageRow row(UUID id, UUID roomId) {
+    return new ExpiredMessageRow() {
+      @Override
+      public UUID getId() {
+        return id;
+      }
 
-            @Override
-            public UUID getRoomId() {
-                return roomId;
-            }
-        };
-    }
+      @Override
+      public UUID getRoomId() {
+        return roomId;
+      }
+    };
+  }
 }

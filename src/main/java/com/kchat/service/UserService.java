@@ -11,20 +11,20 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface UserService {
 
-    UserProfileDto getProfile(UUID userId);
+  UserProfileDto getProfile(UUID userId);
 
-    UserProfileDto updateProfile(UUID userId, UpdateProfileRequest request);
+  UserProfileDto updateProfile(UUID userId, UpdateProfileRequest request);
 
-    UserProfileDto updateAvatar(UUID userId, MultipartFile file);
+  UserProfileDto updateAvatar(UUID userId, MultipartFile file);
 
-    /** S3 object key for an existing avatar. */
-    String requireAvatarKey(UUID userId);
+  /** S3 object key for an existing avatar. */
+  String requireAvatarKey(UUID userId);
 
-    UserSettingsDto getSettings(UUID userId);
+  UserSettingsDto getSettings(UUID userId);
 
-    UserSettingsDto updateSettings(UUID userId, UpdateUserSettingsRequest request);
+  UserSettingsDto updateSettings(UUID userId, UpdateUserSettingsRequest request);
 
-    List<DeviceDto> listDevices(UUID userId, String deviceToken);
+  List<DeviceDto> listDevices(UUID userId, String deviceToken);
 
-    void revokeDevice(UUID userId, UUID deviceId, String deviceToken);
+  void revokeDevice(UUID userId, UUID deviceId, String deviceToken);
 }

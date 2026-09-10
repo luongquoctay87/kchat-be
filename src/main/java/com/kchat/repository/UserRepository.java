@@ -11,30 +11,33 @@ import org.springframework.data.repository.query.Param;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
 
-    Optional<User> findByUsernameIgnoreCase(String username);
+  Optional<User> findByUsernameIgnoreCase(String username);
 
-    Optional<User> findByEmailIgnoreCase(String email);
+  Optional<User> findByEmailIgnoreCase(String email);
 
-    boolean existsByUsernameIgnoreCase(String username);
+  boolean existsByUsernameIgnoreCase(String username);
 
-    boolean existsByEmailIgnoreCase(String email);
+  boolean existsByEmailIgnoreCase(String email);
 
-    @Query("""
+  @Query(
+      """
             SELECT u FROM User u
             WHERE LOWER(u.username) = LOWER(:identifier)
                OR LOWER(u.email) = LOWER(:identifier)
             """)
-    Optional<User> findByUsernameOrEmail(@Param("identifier") String identifier);
+  Optional<User> findByUsernameOrEmail(@Param("identifier") String identifier);
 
-    @Query("""
+  @Query(
+      """
             SELECT u FROM User u
             WHERE u.status = com.kchat.common.enums.UserStatus.active
               AND u.id <> :excludeId
             ORDER BY LOWER(u.displayName) ASC
             """)
-    List<User> findActiveExcluding(@Param("excludeId") UUID excludeId);
+  List<User> findActiveExcluding(@Param("excludeId") UUID excludeId);
 
-    @Query("""
+  @Query(
+      """
             SELECT u FROM User u
             WHERE u.status = com.kchat.common.enums.UserStatus.active
               AND u.id <> :excludeId
@@ -45,23 +48,24 @@ public interface UserRepository extends JpaRepository<User, UUID> {
               )
             ORDER BY LOWER(u.displayName) ASC
             """)
-    List<User> searchActiveExcluding(
-            @Param("excludeId") UUID excludeId,
-            @Param("query") String query,
-            org.springframework.data.domain.Pageable pageable
-    );
+  List<User> searchActiveExcluding(
+      @Param("excludeId") UUID excludeId,
+      @Param("query") String query,
+      org.springframework.data.domain.Pageable pageable);
 
-    @Query("""
+  @Query(
+      """
             SELECT u FROM User u
             WHERE u.status = com.kchat.common.enums.UserStatus.active
               AND u.id IN :ids
             """)
-    List<User> findActiveByIdIn(@Param("ids") Collection<UUID> ids);
+  List<User> findActiveByIdIn(@Param("ids") Collection<UUID> ids);
 
-    @Query("""
+  @Query(
+      """
             SELECT u FROM User u
             WHERE u.status = com.kchat.common.enums.UserStatus.active
             ORDER BY u.createdAt ASC
             """)
-    List<User> findAllActive();
+  List<User> findAllActive();
 }

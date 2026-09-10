@@ -17,19 +17,19 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 @EnableConfigurationProperties({
-        JwtProperties.class,
-        BotProperties.class,
-        DisappearingMessageCleanupProperties.class,
-        MessageRetentionCleanupProperties.class,
-        WebRtcIceProperties.class,
-        PasswordResetProperties.class,
-        MailBrandingProperties.class,
-        S3Properties.class,
-        FcmProperties.class
+  JwtProperties.class,
+  BotProperties.class,
+  DisappearingMessageCleanupProperties.class,
+  MessageRetentionCleanupProperties.class,
+  WebRtcIceProperties.class,
+  PasswordResetProperties.class,
+  MailBrandingProperties.class,
+  S3Properties.class,
+  FcmProperties.class
 })
 public class KChatApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(KChatApplication.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(KChatApplication.class, args);
+  }
 }

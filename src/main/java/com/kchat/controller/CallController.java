@@ -25,79 +25,70 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping
 public class CallController {
 
-    private final CallService callService;
-    private final IceConfigService iceConfigService;
+  private final CallService callService;
+  private final IceConfigService iceConfigService;
 
-    public CallController(CallService callService, IceConfigService iceConfigService) {
-        this.callService = callService;
-        this.iceConfigService = iceConfigService;
-    }
+  public CallController(CallService callService, IceConfigService iceConfigService) {
+    this.callService = callService;
+    this.iceConfigService = iceConfigService;
+  }
 
-    @PostMapping("/rooms/{roomId}/calls")
-    @ResponseStatus(HttpStatus.CREATED)
-    public CallDto initiate(
-            @PathVariable UUID roomId,
-            @Valid @RequestBody CreateCallRequest request
-    ) {
-        return callService.initiate(SecurityUtils.requireUserId(), roomId, request.callType());
-    }
+  @PostMapping("/rooms/{roomId}/calls")
+  @ResponseStatus(HttpStatus.CREATED)
+  public CallDto initiate(
+      @PathVariable UUID roomId, @Valid @RequestBody CreateCallRequest request) {
+    return callService.initiate(SecurityUtils.requireUserId(), roomId, request.callType());
+  }
 
-    @GetMapping("/calls/ice-servers")
-    public IceServersResponse iceServers() {
-        return iceConfigService.iceServersForUser(SecurityUtils.requireUserId());
-    }
+  @GetMapping("/calls/ice-servers")
+  public IceServersResponse iceServers() {
+    return iceConfigService.iceServersForUser(SecurityUtils.requireUserId());
+  }
 
-    @PostMapping("/calls/{callId}/accept")
-    public CallDto accept(@PathVariable UUID callId) {
-        return callService.accept(SecurityUtils.requireUserId(), callId);
-    }
+  @PostMapping("/calls/{callId}/accept")
+  public CallDto accept(@PathVariable UUID callId) {
+    return callService.accept(SecurityUtils.requireUserId(), callId);
+  }
 
-    @PostMapping("/calls/{callId}/decline")
-    public CallDto decline(@PathVariable UUID callId) {
-        return callService.decline(SecurityUtils.requireUserId(), callId);
-    }
+  @PostMapping("/calls/{callId}/decline")
+  public CallDto decline(@PathVariable UUID callId) {
+    return callService.decline(SecurityUtils.requireUserId(), callId);
+  }
 
-    @PostMapping("/calls/{callId}/end")
-    public CallDto end(@PathVariable UUID callId) {
-        return callService.end(SecurityUtils.requireUserId(), callId);
-    }
+  @PostMapping("/calls/{callId}/end")
+  public CallDto end(@PathVariable UUID callId) {
+    return callService.end(SecurityUtils.requireUserId(), callId);
+  }
 
-    @GetMapping("/calls/incoming")
-    public List<CallDto> incoming() {
-        return callService.listIncomingRinging(SecurityUtils.requireUserId());
-    }
+  @GetMapping("/calls/incoming")
+  public List<CallDto> incoming() {
+    return callService.listIncomingRinging(SecurityUtils.requireUserId());
+  }
 
-    /** REST fallback when WS ICE frames are dropped (latency-sensitive; idempotent on peer). */
-    @PostMapping("/calls/{callId}/ice/offer")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void relayIceOffer(
-            @PathVariable UUID callId,
-            @Valid @RequestBody IceOfferRequest request
-    ) {
-        callService.relayIceOffer(SecurityUtils.requireUserId(), callId, request.sdp());
-    }
+  /** REST fallback when WS ICE frames are dropped (latency-sensitive; idempotent on peer). */
+  @PostMapping("/calls/{callId}/ice/offer")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void relayIceOffer(
+      @PathVariable UUID callId, @Valid @RequestBody IceOfferRequest request) {
+    callService.relayIceOffer(SecurityUtils.requireUserId(), callId, request.sdp());
+  }
 
-    @PostMapping("/calls/{callId}/ice/answer")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void relayIceAnswer(
-            @PathVariable UUID callId,
-            @Valid @RequestBody IceAnswerRequest request
-    ) {
-        callService.relayIceAnswer(SecurityUtils.requireUserId(), callId, request.sdp());
-    }
+  @PostMapping("/calls/{callId}/ice/answer")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void relayIceAnswer(
+      @PathVariable UUID callId, @Valid @RequestBody IceAnswerRequest request) {
+    callService.relayIceAnswer(SecurityUtils.requireUserId(), callId, request.sdp());
+  }
 
-    @PostMapping("/calls/{callId}/ice/candidate")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void relayIceCandidate(
-            @PathVariable UUID callId,
-            @Valid @RequestBody IceCandidateRequest request
-    ) {
-        callService.relayIceCandidate(
-                SecurityUtils.requireUserId(),
-                callId,
-                request.candidate(),
-                request.sdpMid(),
-                request.sdpMLineIndex()
-        );
-    }
+  @PostMapping("/calls/{callId}/ice/candidate")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void relayIceCandidate(
+      @PathVariable UUID callId, @Valid @RequestBody IceCandidateRequest request) {
+    callService.relayIceCandidate(
+        SecurityUtils.requireUserId(),
+        callId,
+        request.candidate(),
+        request.sdpMid(),
+        request.sdpMLineIndex());
+  }
 }

@@ -19,130 +19,129 @@ import java.util.UUID;
 @Table(name = "rooms")
 public class ChatRoom {
 
-    @Id
-    private UUID id;
+  @Id private UUID id;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private RoomType type;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 20)
+  private RoomType type;
 
-    @Column(length = 128)
-    private String name;
+  @Column(length = 128)
+  private String name;
 
-    @Column(length = 64, unique = true)
-    private String slug;
+  @Column(length = 64, unique = true)
+  private String slug;
 
-    @Column(name = "avatar_url", length = 512)
-    private String avatarUrl;
+  @Column(name = "avatar_url", length = 512)
+  private String avatarUrl;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
-    private User createdBy;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "created_by")
+  private User createdBy;
 
-    @Column(name = "is_archived", nullable = false)
-    private boolean archived;
+  @Column(name = "is_archived", nullable = false)
+  private boolean archived;
 
-    @Column(name = "disappearing_after_seconds")
-    private Integer disappearingAfterSeconds;
+  @Column(name = "disappearing_after_seconds")
+  private Integer disappearingAfterSeconds;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+  @Column(name = "updated_at", nullable = false)
+  private Instant updatedAt;
 
-    @PrePersist
-    void onCreate() {
-        Instant now = Instant.now();
-        if (id == null) {
-            id = UUID.randomUUID();
-        }
-        createdAt = now;
-        updatedAt = now;
+  @PrePersist
+  void onCreate() {
+    Instant now = Instant.now();
+    if (id == null) {
+      id = UUID.randomUUID();
     }
+    createdAt = now;
+    updatedAt = now;
+  }
 
-    @PreUpdate
-    void onUpdate() {
-        updatedAt = Instant.now();
-    }
+  @PreUpdate
+  void onUpdate() {
+    updatedAt = Instant.now();
+  }
 
-    public UUID getId() {
-        return id;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public RoomType getType() {
-        return type;
-    }
+  public RoomType getType() {
+    return type;
+  }
 
-    public void setType(RoomType type) {
-        this.type = type;
-    }
+  public void setType(RoomType type) {
+    this.type = type;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+  public void setName(String name) {
+    this.name = name;
+  }
 
-    public String getSlug() {
-        return slug;
-    }
+  public String getSlug() {
+    return slug;
+  }
 
-    public void setSlug(String slug) {
-        this.slug = slug;
-    }
+  public void setSlug(String slug) {
+    this.slug = slug;
+  }
 
-    public String getAvatarUrl() {
-        return avatarUrl;
-    }
+  public String getAvatarUrl() {
+    return avatarUrl;
+  }
 
-    public void setAvatarUrl(String avatarUrl) {
-        this.avatarUrl = avatarUrl;
-    }
+  public void setAvatarUrl(String avatarUrl) {
+    this.avatarUrl = avatarUrl;
+  }
 
-    public User getCreatedBy() {
-        return createdBy;
-    }
+  public User getCreatedBy() {
+    return createdBy;
+  }
 
-    public void setCreatedBy(User createdBy) {
-        this.createdBy = createdBy;
-    }
+  public void setCreatedBy(User createdBy) {
+    this.createdBy = createdBy;
+  }
 
-    public boolean isArchived() {
-        return archived;
-    }
+  public boolean isArchived() {
+    return archived;
+  }
 
-    public void setArchived(boolean archived) {
-        this.archived = archived;
-    }
+  public void setArchived(boolean archived) {
+    this.archived = archived;
+  }
 
-    public Integer getDisappearingAfterSeconds() {
-        return disappearingAfterSeconds;
-    }
+  public Integer getDisappearingAfterSeconds() {
+    return disappearingAfterSeconds;
+  }
 
-    public void setDisappearingAfterSeconds(Integer disappearingAfterSeconds) {
-        this.disappearingAfterSeconds = disappearingAfterSeconds;
-    }
+  public void setDisappearingAfterSeconds(Integer disappearingAfterSeconds) {
+    this.disappearingAfterSeconds = disappearingAfterSeconds;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 
-    public Instant getUpdatedAt() {
-        return updatedAt;
-    }
+  public Instant getUpdatedAt() {
+    return updatedAt;
+  }
 
-    public void setUpdatedAt(Instant updatedAt) {
-        this.updatedAt = updatedAt;
-    }
+  public void setUpdatedAt(Instant updatedAt) {
+    this.updatedAt = updatedAt;
+  }
 
-    public void touch() {
-        this.updatedAt = Instant.now();
-    }
+  public void touch() {
+    this.updatedAt = Instant.now();
+  }
 }

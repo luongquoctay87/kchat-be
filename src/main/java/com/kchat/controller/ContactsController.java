@@ -19,30 +19,30 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/contacts")
 public class ContactsController {
 
-    private final ChatService chatService;
+  private final ChatService chatService;
 
-    public ContactsController(ChatService chatService) {
-        this.chatService = chatService;
-    }
+  public ContactsController(ChatService chatService) {
+    this.chatService = chatService;
+  }
 
-    @GetMapping
-    public List<ContactDto> listContacts() {
-        return chatService.listContacts(SecurityUtils.requireUserId());
-    }
+  @GetMapping
+  public List<ContactDto> listContacts() {
+    return chatService.listContacts(SecurityUtils.requireUserId());
+  }
 
-    @GetMapping("/search")
-    public List<ContactDto> searchUsers(@RequestParam("q") String query) {
-        return chatService.searchUsers(SecurityUtils.requireUserId(), query);
-    }
+  @GetMapping("/search")
+  public List<ContactDto> searchUsers(@RequestParam("q") String query) {
+    return chatService.searchUsers(SecurityUtils.requireUserId(), query);
+  }
 
-    @PostMapping("/{userId}")
-    public ContactDto addContact(@PathVariable("userId") UUID userId) {
-        return chatService.addContact(SecurityUtils.requireUserId(), userId);
-    }
+  @PostMapping("/{userId}")
+  public ContactDto addContact(@PathVariable("userId") UUID userId) {
+    return chatService.addContact(SecurityUtils.requireUserId(), userId);
+  }
 
-    @DeleteMapping("/{userId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void removeContact(@PathVariable("userId") UUID userId) {
-        chatService.removeContact(SecurityUtils.requireUserId(), userId);
-    }
+  @DeleteMapping("/{userId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void removeContact(@PathVariable("userId") UUID userId) {
+    chatService.removeContact(SecurityUtils.requireUserId(), userId);
+  }
 }

@@ -19,104 +19,103 @@ import java.util.UUID;
 @Table(name = "calls")
 public class CallSession {
 
-    @Id
-    private UUID id;
+  @Id private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "room_id", nullable = false)
-    private ChatRoom room;
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "room_id", nullable = false)
+  private ChatRoom room;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "initiator_id", nullable = false)
-    private User initiator;
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "initiator_id", nullable = false)
+  private User initiator;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "call_type", nullable = false, length = 10)
-    private CallMediaType callType;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "call_type", nullable = false, length = 10)
+  private CallMediaType callType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private CallStatus status = CallStatus.ringing;
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 20)
+  private CallStatus status = CallStatus.ringing;
 
-    @Column(name = "started_at")
-    private Instant startedAt;
+  @Column(name = "started_at")
+  private Instant startedAt;
 
-    @Column(name = "ended_at")
-    private Instant endedAt;
+  @Column(name = "ended_at")
+  private Instant endedAt;
 
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+  @Column(name = "created_at", nullable = false)
+  private Instant createdAt;
 
-    @PrePersist
-    void onCreate() {
-        if (id == null) {
-            id = UUID.randomUUID();
-        }
-        if (createdAt == null) {
-            createdAt = Instant.now();
-        }
-        if (status == null) {
-            status = CallStatus.ringing;
-        }
+  @PrePersist
+  void onCreate() {
+    if (id == null) {
+      id = UUID.randomUUID();
     }
-
-    public UUID getId() {
-        return id;
+    if (createdAt == null) {
+      createdAt = Instant.now();
     }
-
-    public void setId(UUID id) {
-        this.id = id;
+    if (status == null) {
+      status = CallStatus.ringing;
     }
+  }
 
-    public ChatRoom getRoom() {
-        return room;
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    public void setRoom(ChatRoom room) {
-        this.room = room;
-    }
+  public void setId(UUID id) {
+    this.id = id;
+  }
 
-    public User getInitiator() {
-        return initiator;
-    }
+  public ChatRoom getRoom() {
+    return room;
+  }
 
-    public void setInitiator(User initiator) {
-        this.initiator = initiator;
-    }
+  public void setRoom(ChatRoom room) {
+    this.room = room;
+  }
 
-    public CallMediaType getCallType() {
-        return callType;
-    }
+  public User getInitiator() {
+    return initiator;
+  }
 
-    public void setCallType(CallMediaType callType) {
-        this.callType = callType;
-    }
+  public void setInitiator(User initiator) {
+    this.initiator = initiator;
+  }
 
-    public CallStatus getStatus() {
-        return status;
-    }
+  public CallMediaType getCallType() {
+    return callType;
+  }
 
-    public void setStatus(CallStatus status) {
-        this.status = status;
-    }
+  public void setCallType(CallMediaType callType) {
+    this.callType = callType;
+  }
 
-    public Instant getStartedAt() {
-        return startedAt;
-    }
+  public CallStatus getStatus() {
+    return status;
+  }
 
-    public void setStartedAt(Instant startedAt) {
-        this.startedAt = startedAt;
-    }
+  public void setStatus(CallStatus status) {
+    this.status = status;
+  }
 
-    public Instant getEndedAt() {
-        return endedAt;
-    }
+  public Instant getStartedAt() {
+    return startedAt;
+  }
 
-    public void setEndedAt(Instant endedAt) {
-        this.endedAt = endedAt;
-    }
+  public void setStartedAt(Instant startedAt) {
+    this.startedAt = startedAt;
+  }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+  public Instant getEndedAt() {
+    return endedAt;
+  }
+
+  public void setEndedAt(Instant endedAt) {
+    this.endedAt = endedAt;
+  }
+
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 }

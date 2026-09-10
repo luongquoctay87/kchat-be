@@ -7,7 +7,4 @@ import java.util.List;
 import java.util.UUID;
 
 public record CreateGroupRequest(
-        @NotBlank @Size(max = 128) String name,
-        @NotEmpty @Size(max = 49) List<UUID> memberIds
-) {
-}
+    @NotBlank @Size(max = 128) String name, @NotEmpty @Size(max = 49) List<UUID> memberIds) {}

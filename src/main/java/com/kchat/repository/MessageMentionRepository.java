@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface MessageMentionRepository extends JpaRepository<MessageMention, MessageMention.Pk> {
 
-    @Modifying(clearAutomatically = false, flushAutomatically = true)
-    @Query("DELETE FROM MessageMention m WHERE m.messageId = :messageId")
-    void deleteByMessageId(@Param("messageId") UUID messageId);
+  @Modifying(clearAutomatically = false, flushAutomatically = true)
+  @Query("DELETE FROM MessageMention m WHERE m.messageId = :messageId")
+  void deleteByMessageId(@Param("messageId") UUID messageId);
 }

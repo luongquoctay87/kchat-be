@@ -12,77 +12,81 @@ import org.springframework.data.repository.query.Param;
 
 public interface RoomMemberRepository extends JpaRepository<RoomMember, UUID> {
 
-    interface MemberCount {
-        UUID getRoomId();
+  interface MemberCount {
+    UUID getRoomId();
 
-        long getMemberCount();
-    }
+    long getMemberCount();
+  }
 
-    @Query("""
+  @Query(
+      """
             SELECT m FROM RoomMember m
             JOIN FETCH m.room r
             JOIN FETCH m.user
             WHERE m.user.id = :userId AND m.leftAt IS NULL AND r.archived = FALSE
             ORDER BY r.updatedAt DESC
             """)
-    List<RoomMember> findActiveMemberships(@Param("userId") UUID userId);
+  List<RoomMember> findActiveMemberships(@Param("userId") UUID userId);
 
-    @Query("""
+  @Query(
+      """
             SELECT m FROM RoomMember m
             JOIN FETCH m.room
             JOIN FETCH m.user
             WHERE m.room.id = :roomId AND m.user.id = :userId AND m.leftAt IS NULL
             """)
-    Optional<RoomMember> findActiveMembership(
-            @Param("roomId") UUID roomId,
-            @Param("userId") UUID userId
-    );
+  Optional<RoomMember> findActiveMembership(
+      @Param("roomId") UUID roomId, @Param("userId") UUID userId);
 
-    @Query("""
+  @Query(
+      """
             SELECT m FROM RoomMember m
             JOIN FETCH m.user
             WHERE m.room.id = :roomId AND m.leftAt IS NULL AND m.user.id <> :excludeUserId
             """)
-    List<RoomMember> findOtherActiveMembers(
-            @Param("roomId") UUID roomId,
-            @Param("excludeUserId") UUID excludeUserId
-    );
+  List<RoomMember> findOtherActiveMembers(
+      @Param("roomId") UUID roomId, @Param("excludeUserId") UUID excludeUserId);
 
-    @Query("""
+  @Query(
+      """
             SELECT m.room.id AS roomId, COUNT(m) AS memberCount
             FROM RoomMember m
             WHERE m.room.id IN :roomIds AND m.leftAt IS NULL
             GROUP BY m.room.id
             """)
-    List<MemberCount> countActiveMembers(@Param("roomIds") Collection<UUID> roomIds);
+  List<MemberCount> countActiveMembers(@Param("roomIds") Collection<UUID> roomIds);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("""
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      """
             UPDATE RoomMember m
             SET m.unreadCount = m.unreadCount + 1
             WHERE m.room.id = :roomId
               AND m.leftAt IS NULL
               AND m.user.id <> :senderId
             """)
-    int incrementUnreadForOthers(@Param("roomId") UUID roomId, @Param("senderId") UUID senderId);
+  int incrementUnreadForOthers(@Param("roomId") UUID roomId, @Param("senderId") UUID senderId);
 
-    /** Bot/system messages have no sender — increment unread for every active member. */
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("""
+  /** Bot/system messages have no sender — increment unread for every active member. */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      """
             UPDATE RoomMember m
             SET m.unreadCount = m.unreadCount + 1
             WHERE m.room.id = :roomId AND m.leftAt IS NULL
             """)
-    int incrementUnreadForAll(@Param("roomId") UUID roomId);
+  int incrementUnreadForAll(@Param("roomId") UUID roomId);
 
-    @Query("""
+  @Query(
+      """
             SELECT m.user.id
             FROM RoomMember m
             WHERE m.room.id = :roomId AND m.leftAt IS NULL
             """)
-    List<UUID> findActiveMemberUserIds(@Param("roomId") UUID roomId);
+  List<UUID> findActiveMemberUserIds(@Param("roomId") UUID roomId);
 
-    @Query("""
+  @Query(
+      """
             SELECT m FROM RoomMember m
             JOIN FETCH m.user
             JOIN FETCH m.room
@@ -91,31 +95,30 @@ public interface RoomMemberRepository extends JpaRepository<RoomMember, UUID> {
               CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,
               LOWER(m.user.displayName)
             """)
-    List<RoomMember> findActiveMembersWithUser(@Param("roomId") UUID roomId);
+  List<RoomMember> findActiveMembersWithUser(@Param("roomId") UUID roomId);
 
-    @Query("""
+  @Query(
+      """
             SELECT m FROM RoomMember m
             JOIN FETCH m.user
             JOIN FETCH m.room
             WHERE m.room.id = :roomId AND m.user.id = :userId
             """)
-    Optional<RoomMember> findByRoomIdAndUserId(
-            @Param("roomId") UUID roomId,
-            @Param("userId") UUID userId
-    );
+  Optional<RoomMember> findByRoomIdAndUserId(
+      @Param("roomId") UUID roomId, @Param("userId") UUID userId);
 
-    @Query("""
+  @Query(
+      """
             SELECT m FROM RoomMember m
             JOIN FETCH m.user
             JOIN FETCH m.room
             WHERE m.room.id = :roomId AND m.leftAt IS NOT NULL
             """)
-    List<RoomMember> findLeftMembers(@Param("roomId") UUID roomId);
+  List<RoomMember> findLeftMembers(@Param("roomId") UUID roomId);
 
-    /**
-     * Users who share at least one active room with {@code userId} (for presence fan-out).
-     */
-    @Query("""
+  /** Users who share at least one active room with {@code userId} (for presence fan-out). */
+  @Query(
+      """
             SELECT DISTINCT m2.user.id
             FROM RoomMember m1
             JOIN RoomMember m2 ON m2.room = m1.room
@@ -124,13 +127,14 @@ public interface RoomMemberRepository extends JpaRepository<RoomMember, UUID> {
               AND m1.leftAt IS NULL
               AND m2.leftAt IS NULL
             """)
-    List<UUID> findPeerUserIds(@Param("userId") UUID userId);
+  List<UUID> findPeerUserIds(@Param("userId") UUID userId);
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("""
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      """
             UPDATE RoomMember m
             SET m.unreadCount = 0, m.lastReadMessageId = null
             WHERE m.room.id IN :roomIds
             """)
-    int resetUnreadAndLastReadForRooms(@Param("roomIds") Collection<UUID> roomIds);
+  int resetUnreadAndLastReadForRooms(@Param("roomIds") Collection<UUID> roomIds);
 }

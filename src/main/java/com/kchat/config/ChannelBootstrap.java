@@ -13,27 +13,25 @@ import org.springframework.stereotype.Component;
 @Order(100)
 public class ChannelBootstrap implements ApplicationRunner {
 
-    private static final Logger log = LoggerFactory.getLogger(ChannelBootstrap.class);
+  private static final Logger log = LoggerFactory.getLogger(ChannelBootstrap.class);
 
-    private final ChannelEnrollmentService channelEnrollmentService;
-    private final BotWebhookService botWebhookService;
+  private final ChannelEnrollmentService channelEnrollmentService;
+  private final BotWebhookService botWebhookService;
 
-    public ChannelBootstrap(
-            ChannelEnrollmentService channelEnrollmentService,
-            BotWebhookService botWebhookService
-    ) {
-        this.channelEnrollmentService = channelEnrollmentService;
-        this.botWebhookService = botWebhookService;
+  public ChannelBootstrap(
+      ChannelEnrollmentService channelEnrollmentService, BotWebhookService botWebhookService) {
+    this.channelEnrollmentService = channelEnrollmentService;
+    this.botWebhookService = botWebhookService;
+  }
+
+  @Override
+  public void run(ApplicationArguments args) {
+    try {
+      channelEnrollmentService.ensureDefaultChannels();
+      botWebhookService.ensureDefaultWebhooks();
+      log.info("Default channels and webhooks ready");
+    } catch (Exception ex) {
+      log.error("Channel/webhook bootstrap failed", ex);
     }
-
-    @Override
-    public void run(ApplicationArguments args) {
-        try {
-            channelEnrollmentService.ensureDefaultChannels();
-            botWebhookService.ensureDefaultWebhooks();
-            log.info("Default channels and webhooks ready");
-        } catch (Exception ex) {
-            log.error("Channel/webhook bootstrap failed", ex);
-        }
-    }
+  }
 }

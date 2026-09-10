@@ -7,13 +7,13 @@ import org.junit.jupiter.api.Test;
 
 class AvatarRulesTest {
 
-    @Test
-    void acceptsKnownImageTypes() {
-        assertTrue(AvatarRules.isAllowedMime("image/jpeg"));
-        assertTrue(AvatarRules.isAllowedMime("image/PNG"));
-        assertTrue(AvatarRules.isAllowedMime("image/webp"));
-        assertFalse(AvatarRules.isAllowedMime("image/svg+xml"));
-        assertFalse(AvatarRules.isAllowedMime("application/pdf"));
-        assertFalse(AvatarRules.isAllowedMime(null));
-    }
+  @Test
+  void acceptsKnownImageTypes() {
+    assertTrue(AvatarRules.isAllowedMime("image/jpeg"));
+    assertTrue(AvatarRules.isAllowedMime("image/PNG"));
+    assertTrue(AvatarRules.isAllowedMime("image/webp"));
+    assertFalse(AvatarRules.isAllowedMime("image/svg+xml"));
+    assertFalse(AvatarRules.isAllowedMime("application/pdf"));
+    assertFalse(AvatarRules.isAllowedMime(null));
+  }
 }

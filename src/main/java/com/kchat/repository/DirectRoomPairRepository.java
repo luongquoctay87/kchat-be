@@ -11,26 +11,27 @@ import org.springframework.data.repository.query.Param;
 
 public interface DirectRoomPairRepository extends JpaRepository<DirectRoomPair, UUID> {
 
-    @Query("""
+  @Query(
+      """
             SELECT p FROM DirectRoomPair p
             JOIN FETCH p.userA
             JOIN FETCH p.userB
             WHERE p.roomId IN :roomIds
             """)
-    List<DirectRoomPair> findByRoomIdIn(@Param("roomIds") Collection<UUID> roomIds);
+  List<DirectRoomPair> findByRoomIdIn(@Param("roomIds") Collection<UUID> roomIds);
 
-    @Query("""
+  @Query(
+      """
             SELECT p FROM DirectRoomPair p
             WHERE p.userA.id = :userAId AND p.userB.id = :userBId
             """)
-    Optional<DirectRoomPair> findByOrderedUserPair(
-            @Param("userAId") UUID userAId,
-            @Param("userBId") UUID userBId
-    );
+  Optional<DirectRoomPair> findByOrderedUserPair(
+      @Param("userAId") UUID userAId, @Param("userBId") UUID userBId);
 
-    @Query("""
+  @Query(
+      """
             SELECT p.roomId FROM DirectRoomPair p
             WHERE p.userA.id = :userId OR p.userB.id = :userId
             """)
-    List<UUID> findDirectRoomIdsByUserId(@Param("userId") UUID userId);
+  List<UUID> findDirectRoomIdsByUserId(@Param("userId") UUID userId);
 }
