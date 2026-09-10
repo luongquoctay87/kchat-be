@@ -5,6 +5,7 @@ import com.kchat.config.DisappearingMessageCleanupProperties;
 import com.kchat.config.FcmProperties;
 import com.kchat.config.JwtProperties;
 import com.kchat.config.MailBrandingProperties;
+import com.kchat.config.MessageRetentionCleanupProperties;
 import com.kchat.config.PasswordResetProperties;
 import com.kchat.config.S3Properties;
 import com.kchat.config.WebRtcIceProperties;
@@ -19,6 +20,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         JwtProperties.class,
         BotProperties.class,
         DisappearingMessageCleanupProperties.class,
+        MessageRetentionCleanupProperties.class,
         WebRtcIceProperties.class,
         PasswordResetProperties.class,
         MailBrandingProperties.class,

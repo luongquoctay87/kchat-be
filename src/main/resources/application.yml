@@ -122,6 +122,15 @@ kchat:
       batch-size: ${KCHAT_DISAPPEARING_CLEANUP_BATCH_SIZE:500} # capped at 1000 in service
       lock-at-most-for: PT4M
       lock-at-least-for: PT1M
+    # Hard-delete messages + S3 attachments older than N months (1st of month, 02:00 UTC).
+    retention:
+      enabled: ${KCHAT_RETENTION_CLEANUP_ENABLED:true}
+      cron: ${KCHAT_RETENTION_CLEANUP_CRON:0 0 2 1 * *}
+      older-than-months: ${KCHAT_RETENTION_OLDER_THAN_MONTHS:6}
+      batch-size: ${KCHAT_RETENTION_CLEANUP_BATCH_SIZE:500} # capped at 1000 in service
+      max-batches: ${KCHAT_RETENTION_CLEANUP_MAX_BATCHES:200} # up to batch×max per run
+      lock-at-most-for: PT45M
+      lock-at-least-for: PT5M
     # Interval for CallRingingTimeoutJob (ring timeout itself is 45s in CallServiceImpl).
     call-ringing-interval-ms: ${KCHAT_CALL_RINGING_INTERVAL_MS:${KCHAT_CALL_RINGING_MS:15000}}
   webrtc:

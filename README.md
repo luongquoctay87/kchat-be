@@ -21,7 +21,7 @@
 | Media | S3 presigned URL |
 | Push | Firebase Admin · FCM data-only |
 | Calls | WebRTC signaling (WS) · STUN / TURN |
-| Jobs | ShedLock · disappearing messages · call timeout |
+| Jobs | ShedLock · disappearing messages · call timeout · monthly retention (6 months) |
 | Deploy | Docker → ECR → ECS Fargate |
 
 ---

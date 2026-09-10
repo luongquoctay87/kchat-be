@@ -54,8 +54,15 @@ echo "==> Building ${IMAGE_LOCAL}:${TAG}"
 echo "    registry=${REGISTRY}"
 echo "    region=${REGION}"
 
+DOCKERFILE_ARG=()
+if [[ -f "target/kchat-api.jar" && -f "Dockerfile.amd64" ]]; then
+  echo "    using pre-built target/kchat-api.jar with Dockerfile.amd64"
+  DOCKERFILE_ARG=("-f" "Dockerfile.amd64")
+fi
+
 docker build \
   --platform=linux/amd64 \
+  "${DOCKERFILE_ARG[@]}" \
   -t "${IMAGE_LOCAL}:${TAG}" \
   -t "${IMAGE_LOCAL}:latest" \
   .

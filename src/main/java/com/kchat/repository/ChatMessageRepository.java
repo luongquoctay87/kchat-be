@@ -92,6 +92,22 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
             """, nativeQuery = true)
     List<ExpiredMessageRow> findExpiredForDisappearingCleanup(@Param("limit") int limit);
 
+    /**
+     * Messages older than {@code cutoff} (by {@code created_at}), oldest first.
+     * Includes soft-deleted rows so their S3 attachments can be purged too.
+     */
+    @Query(value = """
+            SELECT m.id AS id, m.room_id AS room_id
+            FROM messages m
+            WHERE m.created_at < :cutoff
+            ORDER BY m.created_at
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<ExpiredMessageRow> findOlderThanForRetentionCleanup(
+            @Param("cutoff") Instant cutoff,
+            @Param("limit") int limit
+    );
+
     @Query(value = """
             SELECT m.id AS id, m.room_id AS room_id
             FROM messages m
