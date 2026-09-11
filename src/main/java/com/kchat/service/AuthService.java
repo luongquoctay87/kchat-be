@@ -1,6 +1,7 @@
 package com.kchat.service;
 
 import com.kchat.common.dto.auth.AuthResponse;
+import com.kchat.common.dto.auth.AvailabilityResponse;
 import com.kchat.common.dto.auth.ChangePasswordRequest;
 import com.kchat.common.dto.auth.LoginRequest;
 import com.kchat.common.dto.auth.LogoutRequest;
@@ -17,6 +18,14 @@ public interface AuthService {
   VerifyRegistrationOtpResponse verifyRegistrationOtp(String email, String otp);
 
   AuthResponse register(RegisterRequest request, String deviceToken);
+
+  /**
+   * Public registration helper. Returns whether the username is free to register.
+   */
+  AvailabilityResponse checkUsername(String username);
+
+  /** Public registration helper. Returns whether the email is free to register. */
+  AvailabilityResponse checkEmail(String email);
 
   AuthResponse login(LoginRequest request, String deviceToken);
 

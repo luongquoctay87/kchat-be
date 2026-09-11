@@ -98,7 +98,7 @@ public class ChatServiceImpl implements ChatService {
   private static final int DEFAULT_MESSAGE_LIMIT = 50;
   private static final int MAX_MESSAGE_LIMIT = 100;
   private static final int MAX_PINS_PER_ROOM = 10;
-  private static final long MAX_MEDIA_BYTES = 25L * 1024 * 1024;
+  private static final long MAX_MEDIA_BYTES = 100L * 1024 * 1024;
   private static final int MAX_GROUP_MEMBERS = 50;
   private static final Duration EDIT_WINDOW = Duration.ofMinutes(15);
   private static final int WIPE_BATCH_SIZE = 500;
@@ -601,7 +601,7 @@ public class ChatServiceImpl implements ChatService {
       throw ApiException.badRequest("validation_error", "file is required");
     }
     if (file.getSize() > MAX_MEDIA_BYTES) {
-      throw ApiException.badRequest("validation_error", "file exceeds 25MB limit");
+      throw ApiException.badRequest("validation_error", "file exceeds 100MB limit");
     }
     RoomMember membership = requireMembership(roomId, userId);
     assertCanPost(membership);

@@ -1,6 +1,7 @@
 package com.kchat.service.impl;
 
 import com.kchat.common.dto.auth.AuthResponse;
+import com.kchat.common.dto.auth.AvailabilityResponse;
 import com.kchat.common.dto.auth.ChangePasswordRequest;
 import com.kchat.common.dto.auth.LoginRequest;
 import com.kchat.common.dto.auth.LogoutRequest;
@@ -140,6 +141,34 @@ public class AuthServiceImpl implements AuthService {
     registrationOtpTokenRepository.save(stored);
 
     return new VerifyRegistrationOtpResponse(plainRegistrationToken);
+  }
+
+  @Override
+  public AvailabilityResponse checkUsername(String username) {
+    if (username == null || username.isBlank()) {
+      throw ApiException.badRequest("validation_error", "username is required");
+    }
+    String normalized = username.trim();
+    if (!normalized.matches("^[a-zA-Z0-9_]{3,64}$")) {
+      throw ApiException.badRequest(
+          "validation_error", "username must be 3-64 alphanumeric or underscore characters");
+    }
+    return new AvailabilityResponse(!userRepository.existsByUsernameIgnoreCase(normalized));
+  }
+
+  @Override
+  public AvailabilityResponse checkEmail(String email) {
+    if (email == null || email.isBlank()) {
+      throw ApiException.badRequest("validation_error", "email is required");
+    }
+    String normalized = email.trim().toLowerCase(Locale.ROOT);
+    if (normalized.length() > 255 || !normalized.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+      throw ApiException.badRequest("validation_error", "email must be a well-formed email address");
+    }
+    if (normalized.endsWith("@register.kchat.internal")) {
+      return new AvailabilityResponse(false);
+    }
+    return new AvailabilityResponse(!userRepository.existsByEmailIgnoreCase(normalized));
   }
 
   @Override

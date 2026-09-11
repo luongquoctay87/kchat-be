@@ -45,6 +45,14 @@ public class RateLimitService {
   public static final int RESET_IP_LIMIT = 10;
   public static final Duration RESET_IP_TTL = Duration.ofMinutes(15);
 
+  public static final String CHECK_USERNAME_IP = "kchat:rl:check-username:ip:";
+  public static final int CHECK_USERNAME_IP_LIMIT = 60;
+  public static final Duration CHECK_USERNAME_IP_TTL = Duration.ofMinutes(1);
+
+  public static final String CHECK_EMAIL_IP = "kchat:rl:check-email:ip:";
+  public static final int CHECK_EMAIL_IP_LIMIT = 60;
+  public static final Duration CHECK_EMAIL_IP_TTL = Duration.ofMinutes(1);
+
   private final StringRedisTemplate redisTemplate;
 
   public RateLimitService(StringRedisTemplate redisTemplate) {

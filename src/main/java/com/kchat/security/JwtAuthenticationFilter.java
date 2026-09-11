@@ -22,6 +22,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       Set.of(
           "/auth/send-registration-otp",
           "/auth/verify-registration-otp",
+          "/auth/check-username",
+          "/auth/check-email",
           "/auth/register",
           "/auth/login",
           "/auth/refresh",

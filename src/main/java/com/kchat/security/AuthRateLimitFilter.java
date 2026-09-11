@@ -20,50 +20,80 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
-  private record Policy(String prefix, int limit, Duration ttl) {}
+  private record Policy(String prefix, int limit, Duration ttl, HttpMethod method) {}
 
   private static final Map<String, Policy> POLICIES =
-      Map.of(
-          "/auth/login",
+      Map.ofEntries(
+          Map.entry(
+              "/auth/login",
               new Policy(
                   RateLimitService.LOGIN_IP,
                   RateLimitService.LOGIN_IP_LIMIT,
-                  RateLimitService.LOGIN_IP_TTL),
-          "/auth/send-registration-otp",
+                  RateLimitService.LOGIN_IP_TTL,
+                  HttpMethod.POST)),
+          Map.entry(
+              "/auth/send-registration-otp",
               new Policy(
                   RateLimitService.REGISTER_OTP_IP,
                   RateLimitService.REGISTER_OTP_IP_LIMIT,
-                  RateLimitService.REGISTER_OTP_IP_TTL),
-          "/auth/register",
+                  RateLimitService.REGISTER_OTP_IP_TTL,
+                  HttpMethod.POST)),
+          Map.entry(
+              "/auth/register",
               new Policy(
                   RateLimitService.REGISTER_IP,
                   RateLimitService.REGISTER_IP_LIMIT,
-                  RateLimitService.REGISTER_IP_TTL),
-          "/auth/verify-registration-otp",
+                  RateLimitService.REGISTER_IP_TTL,
+                  HttpMethod.POST)),
+          Map.entry(
+              "/auth/verify-registration-otp",
               new Policy(
                   RateLimitService.VERIFY_OTP_IP,
                   RateLimitService.VERIFY_OTP_IP_LIMIT,
-                  RateLimitService.VERIFY_OTP_IP_TTL),
-          "/auth/verify-reset-otp",
+                  RateLimitService.VERIFY_OTP_IP_TTL,
+                  HttpMethod.POST)),
+          Map.entry(
+              "/auth/verify-reset-otp",
               new Policy(
                   RateLimitService.VERIFY_OTP_IP,
                   RateLimitService.VERIFY_OTP_IP_LIMIT,
-                  RateLimitService.VERIFY_OTP_IP_TTL),
-          "/auth/refresh",
+                  RateLimitService.VERIFY_OTP_IP_TTL,
+                  HttpMethod.POST)),
+          Map.entry(
+              "/auth/refresh",
               new Policy(
                   RateLimitService.REFRESH_IP,
                   RateLimitService.REFRESH_IP_LIMIT,
-                  RateLimitService.REFRESH_IP_TTL),
-          "/auth/forgot-password",
+                  RateLimitService.REFRESH_IP_TTL,
+                  HttpMethod.POST)),
+          Map.entry(
+              "/auth/forgot-password",
               new Policy(
                   RateLimitService.FORGOT_IP,
                   RateLimitService.FORGOT_IP_LIMIT,
-                  RateLimitService.FORGOT_IP_TTL),
-          "/auth/reset-password",
+                  RateLimitService.FORGOT_IP_TTL,
+                  HttpMethod.POST)),
+          Map.entry(
+              "/auth/reset-password",
               new Policy(
                   RateLimitService.RESET_IP,
                   RateLimitService.RESET_IP_LIMIT,
-                  RateLimitService.RESET_IP_TTL));
+                  RateLimitService.RESET_IP_TTL,
+                  HttpMethod.POST)),
+          Map.entry(
+              "/auth/check-username",
+              new Policy(
+                  RateLimitService.CHECK_USERNAME_IP,
+                  RateLimitService.CHECK_USERNAME_IP_LIMIT,
+                  RateLimitService.CHECK_USERNAME_IP_TTL,
+                  HttpMethod.GET)),
+          Map.entry(
+              "/auth/check-email",
+              new Policy(
+                  RateLimitService.CHECK_EMAIL_IP,
+                  RateLimitService.CHECK_EMAIL_IP_LIMIT,
+                  RateLimitService.CHECK_EMAIL_IP_TTL,
+                  HttpMethod.GET)));
 
   private final RateLimitService rateLimitService;
   private final ObjectMapper objectMapper;
@@ -75,10 +105,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
-    if (!HttpMethod.POST.matches(request.getMethod())) {
-      return true;
-    }
-    return !POLICIES.containsKey(request.getRequestURI());
+    Policy policy = POLICIES.get(request.getRequestURI());
+    return policy == null || !policy.method().matches(request.getMethod());
   }
 
   @Override

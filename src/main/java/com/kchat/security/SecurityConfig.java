@@ -75,6 +75,8 @@ public class SecurityConfig {
                       "/auth/verify-reset-otp",
                       "/auth/reset-password")
                   .permitAll()
+                  .requestMatchers(HttpMethod.GET, "/auth/check-username", "/auth/check-email")
+                  .permitAll()
                   .requestMatchers(HttpMethod.POST, "/hooks/**")
                   .permitAll()
                   // Handshake still requires Bearer via JwtAuthenticationFilter / interceptor
